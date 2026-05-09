@@ -62,7 +62,8 @@
             const [currentCardIndex, setCurrentCardIndex] = React.useState(0);
             
             const [filterStatus, setFilterStatus] = React.useState('all'); 
-            const [flipOrder, setFlipOrder] = React.useState('normal'); // 新增：控制翻轉順序
+            const [flipOrder, setFlipOrder] = React.useState('FMB'); // 支援六向翻轉設定
+            const [selectedCards, setSelectedCards] = React.useState(new Set()); // 多選管理
             
             const [modalState, setModalState] = React.useState({ isOpen: false, type: null });
             const [flipAngle, setFlipAngle] = React.useState(0);
@@ -334,7 +335,42 @@
                     newDecks[activeCategoryIndex].cards.splice(originalIdx, 1);
                     updateDecks(newDecks);
                     setCurrentCardIndex(prev => Math.max(0, prev - 1));
+                    
+                    // 從多選名單中移除
+                    const newSelected = new Set(selectedCards);
+                    if(newSelected.has(originalIdx)) {
+                        newSelected.delete(originalIdx);
+                        setSelectedCards(newSelected);
+                    }
                 }
+            };
+
+            // 列表模式 - 批次刪除
+            const handleBatchDelete = () => {
+                if(selectedCards.size === 0) return;
+                if(window.confirm(`確定要刪除選取的 ${selectedCards.size} 張卡片嗎？操作無法復原。`)) {
+                    const newDecks = [...decks];
+                    // 從後面往前刪除以避免 index 位移問題
+                    const indices = Array.from(selectedCards).sort((a,b)=>b-a);
+                    indices.forEach(idx => {
+                        newDecks[activeCategoryIndex].cards.splice(idx, 1);
+                    });
+                    updateDecks(newDecks);
+                    setSelectedCards(new Set());
+                    setCurrentCardIndex(0);
+                }
+            };
+
+            // 列表模式 - 批次修改狀態
+            const handleBatchStatus = (status) => {
+                if(selectedCards.size === 0 || !status) return;
+                const newDecks = [...decks];
+                selectedCards.forEach(idx => {
+                    newDecks[activeCategoryIndex].cards[idx].status = status;
+                    delete newDecks[activeCategoryIndex].cards[idx].isStarred;
+                });
+                updateDecks(newDecks);
+                setSelectedCards(new Set());
             };
 
             // 開啟編輯卡片視窗
@@ -375,6 +411,7 @@
                 setActiveCategoryIndex(newDecks.length - 1);
                 setCurrentCardIndex(0);
                 setFilterStatus('all');
+                setFlipOrder('FMB');
                 closeModal();
             };
 
@@ -416,6 +453,7 @@
                 setActiveCategoryIndex(Math.max(0, activeCategoryIndex - 1));
                 setCurrentCardIndex(0);
                 setFilterStatus('all');
+                setFlipOrder('FMB');
                 closeModal();
             };
 
@@ -430,27 +468,24 @@
             const closeModal = () => {
                 setModalState({ isOpen: false, type: null });
                 setFormData(prev => ({ ...prev, deckName: '', cardFront: '', cardMiddle: '', cardBack: '', note: '', importText: '', newDeckName: '', editIndex: null }));
+                setSelectedCards(new Set()); // 關閉視窗時清空多選
             };
 
-            // ====== 動態多面翻轉引擎邏輯 (包含翻轉順序控制) ======
+            // ====== 動態多面翻轉引擎邏輯 (包含六向自訂順序) ======
             const faces = React.useMemo(() => {
                 if (!currentCard) return [];
-                let baseFaces = [];
-                if (currentCard.middle) {
-                    baseFaces = [
-                        { label: '正面', text: currentCard.front, theme: 'front' },
-                        { label: '中間', text: currentCard.middle, theme: 'middle' },
-                        { label: '背面', text: currentCard.back, theme: 'back' }
-                    ];
-                } else {
-                    baseFaces = [
-                        { label: '正面', text: currentCard.front, theme: 'front' },
-                        { label: '背面', text: currentCard.back, theme: 'back' }
-                    ];
-                }
                 
-                // 如果開啟反向翻轉，就將順序倒過來
-                return flipOrder === 'reversed' ? baseFaces.reverse() : baseFaces;
+                const faceMap = {
+                    F: { label: '正面', text: currentCard.front, theme: 'front' },
+                    M: currentCard.middle ? { label: '中間', text: currentCard.middle, theme: 'middle' } : null,
+                    B: { label: '背面', text: currentCard.back, theme: 'back' }
+                };
+
+                // 將 'FMB' 等字串拆解為陣列，並過濾掉 null (支援雙面卡過濾掉 M)
+                const orderArr = flipOrder.split('');
+                const resultFaces = orderArr.map(key => faceMap[key]).filter(Boolean);
+                
+                return resultFaces.length > 0 ? resultFaces : [faceMap.F, faceMap.B];
             }, [currentCard, flipOrder]);
 
             const totalFaces = faces.length;
@@ -571,7 +606,7 @@
                                         {decks.map((cat, i) => (
                                             <button 
                                                 key={i} 
-                                                onClick={() => { setActiveCategoryIndex(i); setCurrentCardIndex(0); setFlipAngle(0); setFilterStatus('all'); setFlipOrder('normal'); }} 
+                                                onClick={() => { setActiveCategoryIndex(i); setCurrentCardIndex(0); setFlipAngle(0); setFilterStatus('all'); setFlipOrder('FMB'); }} 
                                                 className={`flex-shrink-0 px-5 py-2 rounded-xl text-sm font-bold whitespace-nowrap transition-all ${activeCategoryIndex === i ? 'bg-blue-600 text-white shadow-md' : 'text-gray-600 hover:bg-gray-100'}`}
                                             >
                                                 {cat.category}
@@ -583,13 +618,25 @@
                                         </button>
                                     </div>
 
-                                    {/* 卡組標題與上方篩選列 */}
+                                    {/* 卡組標題與上方篩選列 (整合在此處) */}
                                     <div className="flex flex-wrap justify-between items-center mb-4 px-2 gap-3">
                                         <div className="flex items-center gap-2 md:gap-3">
                                             <span className="font-bold text-gray-800 text-xl">{currentCategory.category}</span>
-                                            <button onClick={() => {setFlipOrder(prev => prev === 'normal' ? 'reversed' : 'normal'); setFlipAngle(0);}} className="text-xs bg-gray-200 text-gray-700 px-3 py-1.5 rounded-full font-bold hover:bg-gray-300 transition-colors flex items-center">
-                                                <Icons.RotateCcw className="w-3 h-3 mr-1" /> {flipOrder === 'normal' ? '正向' : '反向'}
-                                            </button>
+                                            
+                                            {/* 六向翻轉順序選單 */}
+                                            <div className="relative">
+                                                <select value={flipOrder} onChange={(e) => {setFlipOrder(e.target.value); setFlipAngle(0);}} className="text-xs bg-gray-200 text-gray-700 px-3 py-1.5 rounded-full font-bold outline-none cursor-pointer hover:bg-gray-300 transition-colors appearance-none pr-8">
+                                                    <option value="FMB">🔄 正 ➔ 中 ➔ 背</option>
+                                                    <option value="FBM">🔄 正 ➔ 背 ➔ 中</option>
+                                                    <option value="MFB">🔄 中 ➔ 正 ➔ 背</option>
+                                                    <option value="MBF">🔄 中 ➔ 背 ➔ 正</option>
+                                                    <option value="BFM">🔄 背 ➔ 正 ➔ 中</option>
+                                                    <option value="BMF">🔄 背 ➔ 中 ➔ 正</option>
+                                                </select>
+                                                <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-500">
+                                                    <svg className="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z"/></svg>
+                                                </div>
+                                            </div>
                                         </div>
                                         
                                         <div className="flex items-center gap-2">
@@ -742,7 +789,7 @@
                             <div className={`bg-white rounded-3xl shadow-2xl w-full relative transition-all ${modalState.type === 'cardList' ? 'max-w-4xl p-6 md:p-8' : 'max-w-md p-8'}`}>
                                 <button onClick={closeModal} className="absolute top-6 right-6 text-gray-400 hover:bg-gray-100 p-2 rounded-full transition-colors z-10"><Icons.X className="w-5 h-5" /></button>
                                 
-                                {/* 卡片列表管理模組 (極簡化：移除批次操作) */}
+                                {/* 卡片列表管理模組 (帶有多選與批次操作) */}
                                 {modalState.type === 'cardList' && (
                                     <div className="w-full">
                                         <h3 className="text-xl md:text-2xl font-bold mb-6 text-gray-800 flex items-center pr-10">
@@ -750,16 +797,57 @@
                                             {currentCategory?.category} 
                                             <span className="text-sm font-normal text-gray-400 ml-3 hidden md:inline">({allCards.length} 張卡片)</span>
                                         </h3>
+
+                                        {/* 全選與批次操作工具列 */}
+                                        {allCards.length > 0 && (
+                                            <div className="flex flex-col md:flex-row md:items-center justify-between bg-gray-100 p-3 rounded-xl mb-4 gap-3">
+                                                <label className="flex items-center gap-2 cursor-pointer font-bold text-gray-700 select-none">
+                                                    <input type="checkbox" className="w-4 h-4 text-blue-600 rounded cursor-pointer" 
+                                                        checked={allCards.length > 0 && selectedCards.size === allCards.length}
+                                                        onChange={(e) => {
+                                                            if (e.target.checked) setSelectedCards(new Set(allCards.map((_, i) => i)));
+                                                            else setSelectedCards(new Set());
+                                                        }} 
+                                                    /> 
+                                                    全選 <span className="text-sm text-gray-500 font-normal">({selectedCards.size})</span>
+                                                </label>
+                                                <div className="flex gap-2 w-full md:w-auto">
+                                                    <select 
+                                                        className="text-sm font-bold px-3 py-2 rounded-xl bg-white border border-gray-200 text-gray-700 outline-none hover:bg-gray-50 cursor-pointer shadow-sm flex-1 md:flex-none"
+                                                        onChange={e => { handleBatchStatus(e.target.value); e.target.value = ''; }}
+                                                        defaultValue=""
+                                                    >
+                                                        <option value="" disabled>批次修改狀態...</option>
+                                                        <option value="unrated">⚪ 尚未評估</option>
+                                                        <option value="unfamiliar">🔴 不熟</option>
+                                                        <option value="familiar">🟡 有印象</option>
+                                                        <option value="mastered">🟢 精熟</option>
+                                                    </select>
+                                                    <button onClick={handleBatchDelete} className="text-sm font-bold px-4 py-2 bg-white border border-gray-200 hover:bg-red-50 hover:text-red-500 hover:border-red-200 text-gray-600 rounded-xl transition-colors shadow-sm whitespace-nowrap">
+                                                        批次刪除
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        )}
                                         
                                         {allCards.length === 0 ? (
                                             <div className="text-center text-gray-500 py-16 font-bold bg-gray-50 rounded-2xl border-2 border-dashed">目前沒有任何卡片喔！</div>
                                         ) : (
-                                            <div className="max-h-[60vh] overflow-y-auto custom-scrollbar pr-2 space-y-3">
+                                            <div className="max-h-[50vh] overflow-y-auto custom-scrollbar pr-2 space-y-3">
                                                 {allCards.map((c, idx) => {
                                                     const status = c.status || (c.isStarred ? 'mastered' : 'unrated');
                                                     return (
-                                                        <div key={idx} className="flex flex-col md:flex-row items-center justify-between p-4 rounded-2xl border transition-colors gap-3 bg-gray-50 border-gray-200 hover:border-blue-300">
+                                                        <div key={idx} className={`flex flex-col md:flex-row items-center justify-between p-4 rounded-2xl border transition-colors gap-3 ${selectedCards.has(idx) ? 'bg-blue-50 border-blue-300' : 'bg-gray-50 border-gray-200 hover:border-blue-300'}`}>
                                                             <div className="flex items-start gap-3 w-full md:w-auto md:flex-1 overflow-hidden">
+                                                                <input type="checkbox" className="w-4 h-4 text-blue-600 rounded mt-1 cursor-pointer flex-shrink-0" 
+                                                                    checked={selectedCards.has(idx)} 
+                                                                    onChange={() => {
+                                                                        const newSelected = new Set(selectedCards);
+                                                                        if (newSelected.has(idx)) newSelected.delete(idx);
+                                                                        else newSelected.add(idx);
+                                                                        setSelectedCards(newSelected);
+                                                                    }} 
+                                                                />
                                                                 <div className="flex flex-col overflow-hidden w-full">
                                                                     <div className="font-bold text-gray-800 truncate text-lg" title={c.front}>{c.front}</div>
                                                                     {(c.middle || c.back) && (
