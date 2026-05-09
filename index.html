@@ -78,7 +78,7 @@
             
             const touchStartX = React.useRef(null);
             const isSwiping = React.useRef(false);
-            const flipLock = React.useRef(false); // 翻轉防連點鎖定
+            const flipLock = React.useRef(false); 
 
             const [modalState, setModalState] = React.useState({ isOpen: false, type: null });
             const [formData, setFormData] = React.useState({ deckName: '', deckColor: '#503422', cardFront: '', cardMiddle: '', cardBack: '', note: '', importText: '', importMode: 'append', newDeckName: '', cardType: '2sided', editIndex: null });
@@ -210,23 +210,22 @@
             const currentCard = currentCards[currentCardIndex] || null;
             const totalCards = currentCards.length;
 
-            // 抽卡滑動核心邏輯
             const triggerNext = React.useCallback(() => {
                 if (totalCards <= 1 || swipeOut || flipLock.current) return;
-                setSwipeOut('left'); // 向左飛出
+                setSwipeOut('left'); 
                 setTimeout(() => {
-                    setResetMode(true); // 關閉動畫切換資料
+                    setResetMode(true); 
                     setFlipAngle(0);    
                     setSwipeOffset(0);  
                     setSwipeOut(null);
                     setCurrentCardIndex((prev) => (prev + 1) % totalCards); 
-                    setTimeout(() => setResetMode(false), 50); // 下一幀再重新啟動動畫，避免倒轉
+                    setTimeout(() => setResetMode(false), 50); 
                 }, 300);
             }, [totalCards, swipeOut]);
 
             const triggerPrev = React.useCallback(() => {
                 if (totalCards <= 1 || swipeOut || flipLock.current) return;
-                setSwipeOut('right'); // 向右飛出
+                setSwipeOut('right'); 
                 setTimeout(() => {
                     setResetMode(true);
                     setFlipAngle(0);    
@@ -237,9 +236,9 @@
                 }, 300);
             }, [totalCards, swipeOut]);
 
-            // 滑鼠與觸控事件統一處理 (PointerEvents)
+            // 滑鼠與觸控事件統一處理
             const onPointerDown = (e) => {
-                if (e.pointerType === 'mouse' && e.button !== 0) return; // 僅允許左鍵
+                if (e.pointerType === 'mouse' && e.button !== 0) return; 
                 touchStartX.current = e.clientX;
                 isSwiping.current = false;
                 setIsDragging(true);
@@ -258,11 +257,11 @@
                 if (!isDragging) return;
                 setIsDragging(false);
                 if (swipeOffset > 80) {
-                    triggerPrev(); // 向右拖曳過多 -> 抽上一張
+                    triggerPrev(); 
                 } else if (swipeOffset < -80) {
-                    triggerNext(); // 向左拖曳過多 -> 抽下一張
+                    triggerNext(); 
                 } else {
-                    setSwipeOffset(0); // 彈回原位
+                    setSwipeOffset(0); 
                 }
                 touchStartX.current = null;
             };
@@ -277,7 +276,7 @@
                 
                 flipLock.current = true;
                 setFlipAngle(prev => prev + 180);
-                setTimeout(() => { flipLock.current = false; }, 400); // 鎖定直到 CSS 翻轉動畫完成
+                setTimeout(() => { flipLock.current = false; }, 400); 
             };
 
             React.useEffect(() => {
@@ -361,7 +360,7 @@
                 navigator.clipboard.writeText(promptText).then(() => {
                     alert("✅ 已複製 AI 提示詞！\n\n💡 提醒：貼上給 AI 前，請記得自行修改括號內的內容，或是加上你指定的範圍與主題喔！");
                 }).catch(() => {
-                    alert("複製失敗，請手動複製。");
+                    alert("複製失敗，請手手動複製。");
                 });
             };
 
@@ -457,10 +456,9 @@
                 if (e) e.stopPropagation();
                 if (!currentCard || swipeOut || flipLock.current) return;
 
-                setSwipeOut('left'); // 點擊評分，卡片自動向左飛出
+                setSwipeOut('left'); 
 
                 setTimeout(() => {
-                    // 更新評分狀態
                     const newDecks = [...decks];
                     newDecks[activeCategoryIndex].cards[currentCard.originalIndex].status = status;
                     updateDecks(newDecks); 
@@ -470,7 +468,6 @@
                     setSwipeOffset(0);
                     setSwipeOut(null);
 
-                    // 處理 index (如果是過濾模式可能會縮減列表)
                     if (filterStatus === 'all' || filterStatus === status || filterStatus === 'starred') {
                         setCurrentCardIndex(prev => (prev + 1) % totalCards);
                     } else {
@@ -689,11 +686,30 @@
                 );
             };
 
-            // 根據不同情境決定外層的滑動/飛出動畫樣式
+            // 滑動效果與距離計算 (修改為水平移動並加上阻力與淡出)
+            const maxDrag = 150; 
+            let visualSwipe = swipeOffset;
+            if (Math.abs(swipeOffset) > maxDrag) {
+                // 超過最大距離後增加阻力 (不會無止盡滑動)
+                visualSwipe = Math.sign(swipeOffset) * (maxDrag + (Math.abs(swipeOffset) - maxDrag) * 0.15);
+            }
+            
             let swipeTransform = '';
-            if (swipeOut === 'left') swipeTransform = 'translate3d(-150%, 50px, 0) rotate(-15deg)';
-            else if (swipeOut === 'right') swipeTransform = 'translate3d(150%, 50px, 0) rotate(15deg)';
-            else swipeTransform = `translate3d(${swipeOffset}px, ${Math.abs(swipeOffset)*0.1}px, 0) rotate(${swipeOffset*0.03}deg)`;
+            let currentOpacity = 1;
+
+            if (swipeOut === 'left') {
+                swipeTransform = `translate3d(-250px, 0, 0)`; 
+                currentOpacity = 0;
+            } else if (swipeOut === 'right') {
+                swipeTransform = `translate3d(250px, 0, 0)`; 
+                currentOpacity = 0;
+            } else {
+                swipeTransform = `translate3d(${visualSwipe}px, 0, 0)`; 
+                // 滑動時計算淡出效果 (越接近邊緣越透明)
+                if (isDragging) {
+                    currentOpacity = Math.max(0.2, 1 - (Math.abs(swipeOffset) / 250));
+                }
+            }
 
             return (
                 <div className="min-h-screen flex flex-col items-center py-10 px-4 overflow-hidden">
@@ -851,10 +867,11 @@
                                             </div>
                                         ) : (
                                             <div 
-                                                className={`relative w-full h-full cursor-pointer no-select ${swipeOut ? 'transition-all duration-300' : (isDragging ? '' : 'transition-all duration-300')}`}
+                                                className="relative w-full h-full cursor-pointer no-select"
                                                 style={{ 
                                                     transform: swipeTransform, 
-                                                    opacity: swipeOut ? 0 : 1 
+                                                    opacity: currentOpacity,
+                                                    transition: (resetMode || isDragging) ? 'none' : 'all 0.3s ease-out'
                                                 }}
                                                 onPointerDown={onPointerDown}
                                                 onPointerMove={onPointerMove}
