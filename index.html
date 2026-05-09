@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>苗寶雲端字卡系統 (日文三面版)</title>
+    <title>苗寶雲端字卡系統 (記憶升級版)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
@@ -13,12 +13,10 @@
     <div id="root"></div>
 
     <script type="text/babel" data-type="module">
-        // 1. 引入 Firebase SDK
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
         import { getFirestore, doc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
         import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 
-        // 2. Firebase 配置 [cite: 3]
         const firebaseConfig = {
             apiKey: "AIzaSyBMqOn8ihqPxWP7L1rKMMH07t8Y8QSX_Zs",
             authDomain: "miaocard.firebaseapp.com",
@@ -34,7 +32,6 @@
         const auth = getAuth(app);
         const provider = new GoogleAuthProvider();
 
-        // 3. 圖示組件
         const Icons = {
             PlusCircle: () => <svg xmlns="http://www.w3.org/2000/svg" className="w-16 h-16 text-blue-300 mx-auto mb-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>,
             Plus: ({className}) => <svg xmlns="http://www.w3.org/2000/svg" className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>,
@@ -42,34 +39,32 @@
             X: ({className}) => <svg xmlns="http://www.w3.org/2000/svg" className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>,
             RotateCcw: ({className}) => <svg xmlns="http://www.w3.org/2000/svg" className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>,
             ChevronLeft: ({className}) => <svg xmlns="http://www.w3.org/2000/svg" className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6"/></svg>,
-            ChevronRight: ({className}) => <svg xmlns="http://www.w3.org/2000/svg" className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6"/></svg>,
             SkipBack: ({className}) => <svg xmlns="http://www.w3.org/2000/svg" className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="19 20 9 12 19 4 19 20"/><line x1="5" y1="19" x2="5" y2="5"/></svg>,
-            Star: ({className, fill="none"}) => <svg xmlns="http://www.w3.org/2000/svg" className={className} viewBox="0 0 24 24" fill={fill} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>,
             Shuffle: ({className}) => <svg xmlns="http://www.w3.org/2000/svg" className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="16 3 21 3 21 8"/><line x1="4" y1="20" x2="21" y2="3"/><polyline points="21 16 21 21 16 21"/><line x1="15" y1="15" x2="21" y2="21"/><line x1="4" y1="4" x2="9" y2="9"/></svg>,
             Download: ({className}) => <svg xmlns="http://www.w3.org/2000/svg" className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>,
             Upload: ({className}) => <svg xmlns="http://www.w3.org/2000/svg" className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>,
             FileText: ({className}) => <svg xmlns="http://www.w3.org/2000/svg" className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>,
-            Cloud: ({className}) => <svg xmlns="http://www.w3.org/2000/svg" className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17.5 19c3.037 0 5.5-2.463 5.5-5.5 0-2.77-2.053-5.06-4.73-5.412C17.343 4.316 14.113 1.5 10 1.5 6.012 1.5 2.71 3.99 1.63 7.428 0.7 8.24 0 9.54 0 11c0 2.21 1.79 4 4 4h13.5"/></svg>
+            Cloud: ({className}) => <svg xmlns="http://www.w3.org/2000/svg" className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17.5 19c3.037 0 5.5-2.463 5.5-5.5 0-2.77-2.053-5.06-4.73-5.412C17.343 4.316 14.113 1.5 10 1.5 6.012 1.5 2.71 3.99 1.63 7.428 0.7 8.24 0 9.54 0 11c0 2.21 1.79 4 4 4h13.5"/></svg>,
+            Check: ({className}) => <svg xmlns="http://www.w3.org/2000/svg" className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
         };
 
         const App = () => {
-            // 狀態管理 [cite: 13]
             const [user, setUser] = React.useState(null);
             const [decks, setDecks] = React.useState([]);
             const [activeCategoryIndex, setActiveCategoryIndex] = React.useState(0);
             const [currentCardIndex, setCurrentCardIndex] = React.useState(0);
-            const [showStarredOnly, setShowStarredOnly] = React.useState(false); 
+            
+            // 篩選與順序設定
+            const [filterStatus, setFilterStatus] = React.useState('all'); // 'all', 'mastered', 'familiar', 'forgot'
+            const [order2Sided, setOrder2Sided] = React.useState('FB'); // FB, BF
+            const [order3Sided, setOrder3Sided] = React.useState('FMB'); // FMB, FBM, MFB, MBF, BFM, BMF
+
             const [modalState, setModalState] = React.useState({ isOpen: false, type: null });
-            
-            // 將原本的 isFlipped 替換為 flipAngle，用來支援無限次數的翻轉
             const [flipAngle, setFlipAngle] = React.useState(0);
-            
-            // 新增 cardType 與 cardMiddle 來支援三面字卡 [cite: 16]
             const [formData, setFormData] = React.useState({ deckName: '', cardFront: '', cardMiddle: '', cardBack: '', importText: '', importMode: 'append', newDeckName: '', cardType: '2sided' });
             
             const fileInputRef = React.useRef(null);
             
-            // 監聽登入狀態 [cite: 17]
             React.useEffect(() => {
                 const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
                     setUser(currentUser);
@@ -78,7 +73,6 @@
                 return () => unsubscribe();
             }, []);
 
-            // 監聽雲端資料庫 [cite: 19]
             React.useEffect(() => {
                 if (!user) return;
                 const unsub = onSnapshot(doc(db, "users", user.uid), (docSnap) => {
@@ -89,7 +83,6 @@
                 return () => unsub();
             }, [user]);
 
-            // 同步至雲端的通用函式 [cite: 21]
             const syncToCloud = async (newDecks) => {
                 if (!user) return;
                 await setDoc(doc(db, "users", user.uid), { decks: newDecks });
@@ -103,32 +96,47 @@
             const handleLogin = () => signInWithPopup(auth, provider);
             const handleLogout = () => signOut(auth);
 
-            // 資料計算 [cite: 25]
+            // 資料計算與篩選
             const currentCategory = decks[activeCategoryIndex] || null;
             const allCards = currentCategory?.cards || [];
             
             const currentCardsWithIdx = allCards.map((c, idx) => ({ ...c, originalIndex: idx }));
-            const currentCards = showStarredOnly ? currentCardsWithIdx.filter(c => c.isStarred) : currentCardsWithIdx;
             
-            const currentCard = currentCards[currentCardIndex] || null;
+            const currentCards = currentCardsWithIdx.filter(c => {
+                // 如果是舊卡片沒有 status，預設視為 unrated/forgot
+                const status = c.status || 'unrated'; 
+                if (filterStatus === 'all') return true;
+                if (filterStatus === 'forgot') return status === 'forgot' || status === 'unrated';
+                return status === filterStatus;
+            });
+            
+            // 安全處理 index 越界
+            const safeCardIndex = currentCardIndex >= currentCards.length ? Math.max(0, currentCards.length - 1) : currentCardIndex;
+            const currentCard = currentCards[safeCardIndex] || null;
             const totalCards = currentCards.length;
 
-            // 快捷鍵控制 [cite: 27]
             React.useEffect(() => {
                 const handleKeyDown = (e) => {
                     if (modalState.isOpen || !user) return;
                     if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
 
+                    // 上下左右快捷鍵
                     if (e.key === 'ArrowRight') handleNext();
                     else if (e.key === 'ArrowLeft') handlePrev();
                     else if (e.key === ' ' || e.key === 'Enter') {
                         e.preventDefault(); 
                         handleFlip();
+                    } else if (e.key === '1') {
+                        if(currentCard) handleEvaluate(e, 'forgot');
+                    } else if (e.key === '2') {
+                        if(currentCard) handleEvaluate(e, 'familiar');
+                    } else if (e.key === '3') {
+                        if(currentCard) handleEvaluate(e, 'mastered');
                     }
                 };
                 window.addEventListener('keydown', handleKeyDown);
                 return () => window.removeEventListener('keydown', handleKeyDown);
-            }, [currentCardIndex, flipAngle, totalCards, modalState.isOpen, activeCategoryIndex, decks, showStarredOnly, user]);
+            }, [safeCardIndex, flipAngle, totalCards, modalState.isOpen, activeCategoryIndex, decks, filterStatus, user, currentCard]);
 
             // ===== 各種操作函式 =====
 
@@ -155,9 +163,7 @@
                         if (Array.isArray(importedData)) {
                             if (window.confirm("確定要覆蓋目前雲端資料嗎？操作無法復原。")) {
                                 updateDecks(importedData);
-                                setActiveCategoryIndex(0);
-                                setCurrentCardIndex(0);
-                                setShowStarredOnly(false);
+                                switchCategory(0);
                             }
                         }
                     } catch (error) {
@@ -168,14 +174,12 @@
                 event.target.value = null; 
             };
 
-            // 快速匯入文字 (支援假名格式) [cite: 42]
             const handleTextImport = () => {
                 if (!formData.importText.trim()) return;
                 const cards = [];
                 const blocks = formData.importText.split(/【正面】(?:：|:)?/).filter(b => b.trim() !== '');
                 
                 blocks.forEach(block => {
-                    // 偵測是否包含假名 (三面模式)
                     if (block.includes('【假名】')) {
                         const parts1 = block.split(/【假名】(?:：|:)?/);
                         const front = parts1[0].trim();
@@ -183,13 +187,12 @@
                         if (parts2.length >= 2) {
                             const middle = parts2[0].trim();
                             const back = parts2.slice(1).join('【背面】：').trim();
-                            cards.push({ front, middle, back, isStarred: false });
+                            cards.push({ front, middle, back, status: 'unrated' });
                         }
                     } else {
-                        // 雙面模式
                         const parts = block.split(/【背面】(?:：|:)?/);
                         if (parts.length >= 2) {
-                            cards.push({ front: parts[0].trim(), back: parts.slice(1).join('【背面】：').trim(), isStarred: false });
+                            cards.push({ front: parts[0].trim(), back: parts.slice(1).join('【背面】：').trim(), status: 'unrated' });
                         }
                     }
                 });
@@ -203,9 +206,7 @@
                     const newName = formData.newDeckName.trim() || "新匯入卡組";
                     const newDecks = [...decks, { category: newName, cards: cards }];
                     updateDecks(newDecks);
-                    setActiveCategoryIndex(newDecks.length - 1);
-                    setCurrentCardIndex(0);
-                    setShowStarredOnly(false);
+                    switchCategory(newDecks.length - 1);
                 } else {
                     const newDecks = [...decks];
                     newDecks[activeCategoryIndex].cards = [
@@ -219,11 +220,17 @@
                 setTimeout(() => alert(`🎉 成功匯入 ${cards.length} 張字卡，並已同步至雲端！`), 100);
             };
 
-            // 翻轉角度增加 180 度 [cite: 50]
+            const switchCategory = (index) => {
+                setActiveCategoryIndex(index);
+                setCurrentCardIndex(0);
+                setFlipAngle(0);
+                setFilterStatus('all');
+            };
+
             const handleFlip = () => totalCards > 0 && setFlipAngle(prev => prev + 180);
 
             const handleFirstCard = () => {
-                if (totalCards <= 1 || currentCardIndex === 0) return;
+                if (totalCards <= 1 || safeCardIndex === 0) return;
                 setFlipAngle(0);
                 setCurrentCardIndex(0);
             };
@@ -249,29 +256,39 @@
                 setCurrentCardIndex(0);
             };
 
-            const handleToggleStar = (e) => {
-                e.stopPropagation();
-                if (!currentCard) return;
-                const newDecks = [...decks];
-                const originalIdx = currentCard.originalIndex;
-                const currentStatus = newDecks[activeCategoryIndex].cards[originalIdx].isStarred;
-                newDecks[activeCategoryIndex].cards[originalIdx].isStarred = !currentStatus;
-                updateDecks(newDecks);
-
-                if (showStarredOnly && currentStatus === true) {
-                    if (currentCardIndex >= currentCards.length - 1) {
-                        setCurrentCardIndex(Math.max(0, currentCardIndex - 1));
+            // 等級評估核心邏輯
+            const handleEvaluate = (e, status) => {
+                if(e) e.stopPropagation();
+                if (!currentCard || totalCards === 0) return;
+                
+                // 先翻轉回正面，準備切換下一張
+                setFlipAngle(0);
+                
+                setTimeout(() => {
+                    const newDecks = [...decks];
+                    const originalIdx = currentCard.originalIndex;
+                    newDecks[activeCategoryIndex].cards[originalIdx].status = status;
+                    
+                    // 清理舊的 isStarred 欄位
+                    if(newDecks[activeCategoryIndex].cards[originalIdx].isStarred !== undefined) {
+                        delete newDecks[activeCategoryIndex].cards[originalIdx].isStarred;
                     }
-                }
+                    
+                    updateDecks(newDecks);
+                    
+                    // 如果是在「全部」模式，或是評分後依然在目前篩選的狀態內，則手動切換到下一張
+                    // 如果評分後該卡片不屬於目前篩選，它會自動從陣列消失，index 不用加 1 就能看到新的下一張
+                    if (filterStatus === 'all' || status === filterStatus || (filterStatus === 'forgot' && status === 'unrated')) {
+                        setCurrentCardIndex(prev => (prev + 1) % totalCards);
+                    }
+                }, 150);
             };
 
             const handleAddDeck = () => {
                 if (!formData.deckName.trim()) return;
                 const newDecks = [...decks, { category: formData.deckName, cards: [] }];
                 updateDecks(newDecks);
-                setActiveCategoryIndex(newDecks.length - 1);
-                setCurrentCardIndex(0);
-                setShowStarredOnly(false);
+                switchCategory(newDecks.length - 1);
                 closeModal();
             };
 
@@ -279,15 +296,14 @@
                 if (!formData.cardFront.trim() || !formData.cardBack.trim()) return;
                 const newDecks = [...decks];
                 
-                // 根據模式建立不同的卡片 [cite: 63]
-                const newCard = { front: formData.cardFront, back: formData.cardBack, isStarred: false };
+                const newCard = { front: formData.cardFront, back: formData.cardBack, status: 'unrated' };
                 if (formData.cardType === '3sided' && formData.cardMiddle.trim()) {
                     newCard.middle = formData.cardMiddle;
                 }
 
                 newDecks[activeCategoryIndex].cards.push(newCard);
                 updateDecks(newDecks);
-                if (showStarredOnly) setShowStarredOnly(false);
+                if (filterStatus !== 'all') setFilterStatus('all');
                 setCurrentCardIndex(newDecks[activeCategoryIndex].cards.length - 1);
                 closeModal();
             };
@@ -295,9 +311,7 @@
             const handleDeleteDeck = () => {
                 const newDecks = decks.filter((_, idx) => idx !== activeCategoryIndex);
                 updateDecks(newDecks);
-                setActiveCategoryIndex(Math.max(0, activeCategoryIndex - 1));
-                setCurrentCardIndex(0);
-                setShowStarredOnly(false);
+                switchCategory(Math.max(0, activeCategoryIndex - 1));
                 closeModal();
             };
 
@@ -305,58 +319,63 @@
                 const newDecks = [...decks];
                 newDecks[activeCategoryIndex].cards.splice(currentCard.originalIndex, 1);
                 updateDecks(newDecks);
-                setCurrentCardIndex(Math.max(0, currentCardIndex - 1));
+                setCurrentCardIndex(Math.max(0, safeCardIndex - 1));
                 closeModal();
             };
 
             const closeModal = () => {
                 setModalState({ isOpen: false, type: null });
-                // 保留使用者選擇的 cardType 習慣，只清空內容
                 setFormData(prev => ({ ...prev, deckName: '', cardFront: '', cardMiddle: '', cardBack: '', importText: '', newDeckName: '' }));
             };
 
             // ====== 動態多面翻轉引擎邏輯 ======
             
-            // 決定這張卡片有幾面
             const faces = React.useMemo(() => {
                 if (!currentCard) return [];
+                
+                const faceF = { id: 'F', label: currentCard.middle ? '漢字' : '正面', text: currentCard.front, theme: 'front' };
+                const faceM = { id: 'M', label: '假名', text: currentCard.middle, theme: 'middle' };
+                const faceB = { id: 'B', label: currentCard.middle ? '中文' : '背面', text: currentCard.back, theme: 'back' };
+
                 if (currentCard.middle) {
-                    return [
-                        { label: '漢字', text: currentCard.front, theme: 'front' },
-                        { label: '假名', text: currentCard.middle, theme: 'middle' },
-                        { label: '中文', text: currentCard.back, theme: 'back' }
-                    ];
+                    const map3 = {
+                        'FMB': [faceF, faceM, faceB], 'FBM': [faceF, faceB, faceM],
+                        'MFB': [faceM, faceF, faceB], 'MBF': [faceM, faceB, faceF],
+                        'BFM': [faceB, faceF, faceM], 'BMF': [faceB, faceM, faceF]
+                    };
+                    return map3[order3Sided] || map3['FMB'];
+                } else {
+                    return order2Sided === 'BF' ? [faceB, faceF] : [faceF, faceB];
                 }
-                return [
-                    { label: 'Front', text: currentCard.front, theme: 'front' },
-                    { label: 'Back', text: currentCard.back, theme: 'back' }
-                ];
-            }, [currentCard]);
+            }, [currentCard, order2Sided, order3Sided]);
 
             const totalFaces = faces.length;
             const steps = Math.floor(flipAngle / 180);
             
-            // 計算目前與下一次應該顯示哪一面
             const currentFaceIdx = totalFaces > 0 ? steps % totalFaces : 0;
             const nextFaceIdx = totalFaces > 0 ? (steps + 1) % totalFaces : 0;
-
-            // 判斷當前物理 DOM 是看到正面還是背面
             const isDomFrontVisible = steps % 2 === 0;
 
             const domFrontFace = isDomFrontVisible ? faces[currentFaceIdx] : faces[nextFaceIdx];
             const domBackFace = isDomFrontVisible ? faces[nextFaceIdx] : faces[currentFaceIdx];
 
-            // 顏色主題產生器
             const getFaceClasses = (theme) => {
-                if (theme === 'front') return { bg: 'bg-white', border: 'border-blue-500', text: 'text-gray-800', badgeText: 'text-blue-500', badgeBg: 'bg-blue-50', iconClass: 'text-gray-300 hover:text-yellow-400 hover:bg-gray-50', trashClass: 'text-gray-300 hover:text-red-500 hover:bg-red-50' };
-                if (theme === 'middle') return { bg: 'bg-emerald-50', border: 'border-emerald-500', text: 'text-emerald-900', badgeText: 'text-emerald-600', badgeBg: 'bg-emerald-100', iconClass: 'text-emerald-300 hover:text-yellow-500 hover:bg-emerald-100', trashClass: 'text-emerald-300 hover:text-red-500 hover:bg-emerald-100' };
-                if (theme === 'back') return { bg: 'bg-gray-800', border: 'border-yellow-400', text: 'text-white', badgeText: 'text-yellow-400', badgeBg: 'bg-gray-700', iconClass: 'text-gray-500 hover:text-yellow-400 hover:bg-gray-700', trashClass: 'text-gray-500 hover:text-red-400 hover:bg-gray-700' };
+                if (theme === 'front') return { bg: 'bg-white', border: 'border-blue-500', text: 'text-gray-800', badgeText: 'text-blue-500', badgeBg: 'bg-blue-50', trashClass: 'text-gray-300 hover:text-red-500 hover:bg-red-50' };
+                if (theme === 'middle') return { bg: 'bg-emerald-50', border: 'border-emerald-500', text: 'text-emerald-900', badgeText: 'text-emerald-600', badgeBg: 'bg-emerald-100', trashClass: 'text-emerald-300 hover:text-red-500 hover:bg-emerald-100' };
+                if (theme === 'back') return { bg: 'bg-gray-800', border: 'border-yellow-400', text: 'text-white', badgeText: 'text-yellow-400', badgeBg: 'bg-gray-700', trashClass: 'text-gray-500 hover:text-red-400 hover:bg-gray-700' };
                 return {};
             };
 
             const frontTheme = getFaceClasses(domFrontFace?.theme);
             const backTheme = getFaceClasses(domBackFace?.theme);
 
+            // 取得卡片目前的狀態顯示標籤
+            const getStatusBadge = (status) => {
+                if(status === 'mastered') return <span className="bg-green-100 text-green-700 px-3 py-1 rounded-full text-xs font-bold shadow-sm">已精熟</span>;
+                if(status === 'familiar') return <span className="bg-yellow-100 text-yellow-700 px-3 py-1 rounded-full text-xs font-bold shadow-sm">有印象</span>;
+                if(status === 'forgot') return <span className="bg-red-100 text-red-600 px-3 py-1 rounded-full text-xs font-bold shadow-sm">常忘記</span>;
+                return <span className="bg-gray-100 text-gray-400 px-3 py-1 rounded-full text-xs font-bold shadow-sm border border-gray-200">尚未評估</span>;
+            };
 
             return (
                 <div className="min-h-screen flex flex-col items-center py-10 px-4">
@@ -372,7 +391,7 @@
                         .perspective-1000 { perspective: 1000px; }
                     `}</style>
 
-                    {/* 頂部標題與登入區 [cite: 72] */}
+                    {/* 頂部標題與登入區 */}
                     <div className="w-full max-w-4xl flex flex-col md:flex-row justify-between items-center mb-8 gap-4">
                         <div className="flex items-center gap-3">
                             <Icons.Cloud className="w-8 h-8 text-blue-500" />
@@ -427,12 +446,12 @@
                                 </div>
                             ) : (
                                 <div className="w-full max-w-2xl mx-auto">
-                                    {/* 卡組選擇分頁 [cite: 90] */}
-                                    <div className="flex overflow-x-auto custom-scrollbar bg-white p-2 rounded-2xl mb-6 border border-gray-200 gap-2 items-center shadow-sm">
+                                    {/* 卡組選擇分頁 */}
+                                    <div className="flex overflow-x-auto custom-scrollbar bg-white p-2 rounded-2xl mb-4 border border-gray-200 gap-2 items-center shadow-sm">
                                         {decks.map((cat, i) => (
                                             <button 
                                                 key={i} 
-                                                onClick={() => { setActiveCategoryIndex(i); setCurrentCardIndex(0); setFlipAngle(0); setShowStarredOnly(false); }} 
+                                                onClick={() => switchCategory(i)} 
                                                 className={`flex-shrink-0 px-5 py-2 rounded-xl text-sm font-bold whitespace-nowrap transition-all ${activeCategoryIndex === i ? 'bg-blue-600 text-white shadow-md' : 'text-gray-600 hover:bg-gray-100'}`}
                                             >
                                                 {cat.category}
@@ -444,9 +463,47 @@
                                         </button>
                                     </div>
 
+                                    {/* 狀態篩選與順序設定列 */}
+                                    <div className="flex flex-col md:flex-row justify-between items-center bg-white p-3 rounded-2xl shadow-sm border border-gray-100 mb-6 gap-3">
+                                        <div className="flex bg-gray-100 p-1 rounded-xl w-full md:w-auto overflow-x-auto custom-scrollbar">
+                                            <button onClick={() => { setFilterStatus('all'); setFlipAngle(0); setCurrentCardIndex(0); }} className={`flex-1 md:flex-none px-4 py-1.5 rounded-lg text-sm font-bold whitespace-nowrap transition-colors ${filterStatus === 'all' ? 'bg-white shadow text-gray-800' : 'text-gray-500 hover:text-gray-700'}`}>全部</button>
+                                            <button onClick={() => { setFilterStatus('forgot'); setFlipAngle(0); setCurrentCardIndex(0); }} className={`flex-1 md:flex-none px-4 py-1.5 rounded-lg text-sm font-bold whitespace-nowrap transition-colors ${filterStatus === 'forgot' ? 'bg-white shadow text-red-600' : 'text-gray-500 hover:text-red-500'}`}>忘記</button>
+                                            <button onClick={() => { setFilterStatus('familiar'); setFlipAngle(0); setCurrentCardIndex(0); }} className={`flex-1 md:flex-none px-4 py-1.5 rounded-lg text-sm font-bold whitespace-nowrap transition-colors ${filterStatus === 'familiar' ? 'bg-white shadow text-yellow-600' : 'text-gray-500 hover:text-yellow-600'}`}>有印象</button>
+                                            <button onClick={() => { setFilterStatus('mastered'); setFlipAngle(0); setCurrentCardIndex(0); }} className={`flex-1 md:flex-none px-4 py-1.5 rounded-lg text-sm font-bold whitespace-nowrap transition-colors ${filterStatus === 'mastered' ? 'bg-white shadow text-green-600' : 'text-gray-500 hover:text-green-600'}`}>精熟</button>
+                                        </div>
+
+                                        <div className="flex gap-4 text-sm font-bold text-gray-600 w-full md:w-auto justify-end px-2">
+                                            <div className="flex items-center gap-1.5">
+                                                <span>雙面：</span>
+                                                <select className="bg-gray-50 border border-gray-200 rounded-lg p-1 outline-none focus:ring-2 focus:ring-blue-500" value={order2Sided} onChange={e => {setOrder2Sided(e.target.value); setFlipAngle(0);}}>
+                                                    <option value="FB">正 ➔ 背</option>
+                                                    <option value="BF">背 ➔ 正</option>
+                                                </select>
+                                            </div>
+                                            {allCards.some(c => c.middle) && (
+                                                <div className="flex items-center gap-1.5">
+                                                    <span>三面：</span>
+                                                    <select className="bg-gray-50 border border-gray-200 rounded-lg p-1 outline-none focus:ring-2 focus:ring-blue-500" value={order3Sided} onChange={e => {setOrder3Sided(e.target.value); setFlipAngle(0);}}>
+                                                        <option value="FMB">漢 ➔ 假 ➔ 中</option>
+                                                        <option value="FBM">漢 ➔ 中 ➔ 假</option>
+                                                        <option value="MFB">假 ➔ 漢 ➔ 中</option>
+                                                        <option value="MBF">假 ➔ 中 ➔ 漢</option>
+                                                        <option value="BFM">中 ➔ 漢 ➔ 假</option>
+                                                        <option value="BMF">中 ➔ 假 ➔ 漢</option>
+                                                    </select>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+
                                     {/* 卡組標題與刪除按鈕 */}
                                     <div className="flex justify-between items-center mb-4 px-2">
-                                        <span className="font-bold text-gray-800 text-xl">{currentCategory.category}</span>
+                                        <div className="flex items-center gap-3">
+                                            <span className="font-bold text-gray-800 text-xl">{currentCategory.category}</span>
+                                            <span className="text-gray-400 font-bold text-sm bg-gray-100 px-3 py-1 rounded-full">
+                                                {totalCards > 0 ? safeCardIndex + 1 : 0} / {totalCards}
+                                            </span>
+                                        </div>
                                         <button onClick={() => setModalState({ isOpen: true, type: 'deleteDeck' })} className="text-gray-400 text-sm hover:text-red-500 hover:bg-red-50 flex items-center px-3 py-1.5 rounded-lg transition-colors font-medium">
                                             <Icons.Trash2 className="w-4 h-4 mr-1.5" /> 刪除卡組
                                         </button>
@@ -456,11 +513,10 @@
                                     <div className="aspect-[4/3] md:aspect-[16/10] perspective-1000 mb-8">
                                         {totalCards === 0 ? (
                                             <div className="w-full h-full bg-white rounded-3xl border-2 border-dashed border-gray-300 flex items-center justify-center flex-col shadow-sm">
-                                                {showStarredOnly ? (
+                                                {filterStatus !== 'all' ? (
                                                     <React.Fragment>
-                                                        <Icons.Star className="w-12 h-12 text-yellow-400 mb-3" fill="currentColor" />
-                                                        <span className="text-gray-500 font-bold mb-4">這個卡組目前沒有被標記星星的卡片喔！</span>
-                                                        <button onClick={() => setShowStarredOnly(false)} className="text-blue-600 font-bold hover:bg-blue-50 px-6 py-2 rounded-full transition-colors flex items-center border border-blue-200">
+                                                        <span className="text-gray-500 font-bold mb-4">這個分類目前沒有符合「{filterStatus === 'forgot' ? '忘記' : filterStatus === 'familiar' ? '有印象' : '精熟'}」狀態的卡片喔！</span>
+                                                        <button onClick={() => setFilterStatus('all')} className="text-blue-600 font-bold hover:bg-blue-50 px-6 py-2 rounded-full transition-colors flex items-center border border-blue-200">
                                                             返回全部卡片
                                                         </button>
                                                     </React.Fragment>
@@ -479,14 +535,15 @@
                                                         {domFrontFace?.label}
                                                     </div>
                                                     
-                                                    <button onClick={handleToggleStar} className={`absolute top-5 right-14 p-2 rounded-full transition-colors ${currentCard?.isStarred ? 'text-yellow-400 hover:bg-yellow-100' : frontTheme.iconClass}`} title="標記星號 (重點複習)">
-                                                        <Icons.Star className="w-6 h-6" fill={currentCard?.isStarred ? "currentColor" : "none"} />
-                                                    </button>
-                                                    <button onClick={(e) => { e.stopPropagation(); setModalState({ isOpen: true, type: 'deleteCard' }); }} className={`absolute top-5 right-5 p-2 rounded-full transition-colors ${frontTheme.trashClass}`} title="刪除此卡">
+                                                    <div className="absolute top-5 right-14">
+                                                        {getStatusBadge(currentCard?.status)}
+                                                    </div>
+
+                                                    <button onClick={(e) => { e.stopPropagation(); setModalState({ isOpen: true, type: 'deleteCard' }); }} className={`absolute top-4 right-4 p-2 rounded-full transition-colors ${frontTheme.trashClass}`} title="刪除此卡">
                                                         <Icons.Trash2 className="w-5 h-5" />
                                                     </button>
 
-                                                    <div className={`text-3xl md:text-4xl font-bold whitespace-pre-wrap leading-relaxed w-full px-4 mt-6 ${frontTheme.text}`}>
+                                                    <div className={`text-4xl md:text-5xl font-bold whitespace-pre-wrap leading-relaxed w-full px-4 mt-6 ${frontTheme.text}`}>
                                                         {domFrontFace?.text}
                                                     </div>
                                                     <div className={`absolute bottom-5 text-xs flex items-center font-bold px-3 py-1 rounded-full ${frontTheme.badgeText} ${frontTheme.badgeBg}`}>
@@ -500,10 +557,11 @@
                                                         {domBackFace?.label}
                                                     </div>
                                                     
-                                                    <button onClick={handleToggleStar} className={`absolute top-5 right-14 p-2 rounded-full transition-colors ${currentCard?.isStarred ? 'text-yellow-400 hover:bg-yellow-100' : backTheme.iconClass}`} title="標記星號 (重點複習)">
-                                                        <Icons.Star className="w-6 h-6" fill={currentCard?.isStarred ? "currentColor" : "none"} />
-                                                    </button>
-                                                    <button onClick={(e) => { e.stopPropagation(); setModalState({ isOpen: true, type: 'deleteCard' }); }} className={`absolute top-5 right-5 p-2 rounded-full transition-colors ${backTheme.trashClass}`} title="刪除此卡">
+                                                    <div className="absolute top-5 right-14">
+                                                        {getStatusBadge(currentCard?.status)}
+                                                    </div>
+
+                                                    <button onClick={(e) => { e.stopPropagation(); setModalState({ isOpen: true, type: 'deleteCard' }); }} className={`absolute top-4 right-4 p-2 rounded-full transition-colors ${backTheme.trashClass}`} title="刪除此卡">
                                                         <Icons.Trash2 className="w-5 h-5" />
                                                     </button>
 
@@ -519,30 +577,27 @@
                                         )}
                                     </div>
 
-                                    {/* 控制列與進度列 [cite: 133] */}
+                                    {/* 評估與控制列 */}
                                     <div className="flex flex-col md:flex-row items-center justify-between gap-6 bg-white p-4 rounded-3xl shadow-sm border border-gray-100">
-                                        <div className="flex items-center gap-3 w-full md:w-auto">
-                                            <div className="text-gray-500 text-sm font-bold bg-gray-100 px-4 py-3 rounded-2xl whitespace-nowrap">
-                                                {totalCards > 0 ? currentCardIndex + 1 : 0} / {totalCards}
-                                            </div>
-                                            {allCards.length > 0 && (
-                                                <button onClick={() => {setShowStarredOnly(!showStarredOnly); setCurrentCardIndex(0); setFlipAngle(0);}} className={`text-sm font-bold px-4 py-3 rounded-2xl transition-colors flex items-center justify-center flex-1 md:flex-none ${showStarredOnly ? 'bg-yellow-100 text-yellow-700' : 'bg-gray-50 text-gray-600 hover:bg-gray-100'}`}>
-                                                    <Icons.Star className="w-4 h-4 mr-1.5" fill={showStarredOnly ? "currentColor" : "none"} /> 
-                                                    {showStarredOnly ? '查看全部' : '只看星號'}
-                                                </button>
-                                            )}
+                                        
+                                        {/* 左側輔助按鈕 */}
+                                        <div className="flex items-center gap-2 w-full md:w-auto justify-center">
+                                            <button onClick={handleFirstCard} disabled={totalCards <= 1 || safeCardIndex === 0} className="w-12 h-12 bg-gray-50 text-gray-600 rounded-full flex items-center justify-center disabled:opacity-30 hover:bg-gray-200 transition-colors" title="回到第一張"><Icons.SkipBack className="w-5 h-5"/></button>
+                                            <button onClick={handlePrev} disabled={totalCards <= 1} className="w-12 h-12 bg-gray-50 text-gray-600 rounded-full flex items-center justify-center disabled:opacity-30 hover:bg-gray-200 transition-colors" title="上一張"><Icons.ChevronLeft className="w-6 h-6"/></button>
+                                            <button onClick={handleShuffle} disabled={totalCards <= 1} className="w-12 h-12 bg-gray-800 text-white rounded-full disabled:opacity-30 hover:bg-black transition-colors shadow-md flex items-center justify-center" title="打亂順序"><Icons.Shuffle className="w-5 h-5" /></button>
                                         </div>
 
-                                        <div className="flex items-center gap-2">
-                                            <button onClick={handleFirstCard} disabled={totalCards <= 1 || currentCardIndex === 0} className="w-12 h-12 bg-gray-50 text-gray-600 rounded-full flex items-center justify-center disabled:opacity-30 hover:bg-gray-200 transition-colors" title="回到第一張"><Icons.SkipBack className="w-5 h-5"/></button>
-                                            <button onClick={handlePrev} disabled={totalCards <= 1} className="w-12 h-12 bg-gray-50 text-gray-600 rounded-full flex items-center justify-center disabled:opacity-30 hover:bg-gray-200 transition-colors" title="上一張"><Icons.ChevronLeft className="w-6 h-6"/></button>
-                                            
-                                            <div className="flex gap-2 px-2">
-                                                <button onClick={handleShuffle} disabled={totalCards <= 1} className="px-5 py-3 bg-gray-800 text-white rounded-full text-sm font-bold disabled:opacity-30 hover:bg-gray-900 transition-colors shadow-md flex items-center"><Icons.Shuffle className="w-4 h-4 mr-1" />打亂</button>
-                                                <button onClick={() => setModalState({ isOpen: true, type: 'addCard' })} className="px-5 py-3 bg-blue-600 text-white rounded-full text-sm font-bold hover:bg-blue-700 transition-colors shadow-md flex items-center"><Icons.Plus className="w-4 h-4 mr-1 border-2 border-current rounded-full" />新增</button>
-                                            </div>
-                                            
-                                            <button onClick={handleNext} disabled={totalCards <= 1} className="w-12 h-12 bg-gray-50 text-gray-600 rounded-full flex items-center justify-center disabled:opacity-30 hover:bg-gray-200 transition-colors" title="下一張"><Icons.ChevronRight className="w-6 h-6"/></button>
+                                        {/* 右側記憶評估 (取代原本的 Next) */}
+                                        <div className="flex items-center gap-2 w-full md:w-auto justify-center">
+                                            <button onClick={(e) => handleEvaluate(e, 'forgot')} disabled={totalCards === 0} className="px-6 md:px-8 py-3.5 bg-red-100 text-red-600 border-b-4 border-red-200 active:border-b-0 active:translate-y-1 rounded-2xl text-sm font-black hover:bg-red-200 transition-all flex flex-col items-center disabled:opacity-30">
+                                                <span>忘記</span><span className="text-[10px] font-medium opacity-70 mt-0.5">(快捷 1)</span>
+                                            </button>
+                                            <button onClick={(e) => handleEvaluate(e, 'familiar')} disabled={totalCards === 0} className="px-6 md:px-8 py-3.5 bg-yellow-100 text-yellow-600 border-b-4 border-yellow-200 active:border-b-0 active:translate-y-1 rounded-2xl text-sm font-black hover:bg-yellow-200 transition-all flex flex-col items-center disabled:opacity-30">
+                                                <span>有印象</span><span className="text-[10px] font-medium opacity-70 mt-0.5">(快捷 2)</span>
+                                            </button>
+                                            <button onClick={(e) => handleEvaluate(e, 'mastered')} disabled={totalCards === 0} className="px-6 md:px-8 py-3.5 bg-green-100 text-green-700 border-b-4 border-green-200 active:border-b-0 active:translate-y-1 rounded-2xl text-sm font-black hover:bg-green-200 transition-all flex flex-col items-center disabled:opacity-30">
+                                                <span>精熟</span><span className="text-[10px] font-medium opacity-70 mt-0.5">(快捷 3)</span>
+                                            </button>
                                         </div>
                                     </div>
                                 </div>
@@ -550,7 +605,7 @@
                         </div>
                     )}
 
-                    {/* 所有彈出視窗模組 [cite: 148] */}
+                    {/* 所有彈出視窗模組 */}
                     {modalState.isOpen && (
                         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex justify-center items-center z-50 p-4 animate-[fadeIn_0.2s]">
                             <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md p-8 relative">
@@ -585,7 +640,7 @@
                                             <input autoFocus type="text" className="w-full border-2 border-gray-100 bg-gray-50 p-4 rounded-2xl mb-4 focus:border-blue-500 focus:bg-white outline-none text-sm transition-colors" placeholder="輸入新卡組名稱 (未輸入預設為：新匯入卡組)" value={formData.newDeckName} onChange={e => setFormData({...formData, newDeckName: e.target.value})} />
                                         )}
                                         
-                                        <textarea rows="6" className="w-full border-2 border-gray-100 bg-gray-50 p-4 rounded-2xl mb-6 text-sm focus:border-blue-500 focus:bg-white outline-none resize-none transition-colors" placeholder="格式一(雙面)：&#10;【正面】：Apple&#10;【背面】：蘋果&#10;&#10;格式二(日文三面)：&#10;【正面】：猫&#10;【假名】：ねこ&#10;【背面】：貓咪" value={formData.importText} onChange={e => setFormData({...formData, importText: e.target.value})}></textarea>
+                                        <textarea rows="6" className="w-full border-2 border-gray-100 bg-gray-50 p-4 rounded-2xl mb-6 text-sm focus:border-blue-500 focus:bg-white outline-none resize-none transition-colors" placeholder={"格式一(雙面)：\n【正面】：Apple\n【背面】：蘋果\n\n格式二(日文三面)：\n【正面】：猫\n【假名】：ねこ\n【背面】：貓咪"} value={formData.importText} onChange={e => setFormData({...formData, importText: e.target.value})}></textarea>
                                         <button onClick={handleTextImport} className="w-full bg-gray-800 text-white py-4 rounded-2xl font-bold hover:bg-black transition-colors shadow-lg">解析並同步至雲端</button>
                                     </div>
                                 )}
