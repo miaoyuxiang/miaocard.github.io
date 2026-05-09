@@ -806,10 +806,10 @@
                                             <button onClick={handleFirstCard} disabled={totalCards <= 1 || currentCardIndex === 0} className="w-10 h-10 bg-gray-50 text-gray-600 rounded-full flex items-center justify-center disabled:opacity-30 hover:bg-gray-200 transition-colors shrink-0" title="回到第一張"><Icons.SkipBack className="w-4 h-4"/></button>
                                             <button onClick={handlePrev} disabled={totalCards <= 1} className="w-10 h-10 bg-gray-50 text-gray-600 rounded-full flex items-center justify-center disabled:opacity-30 hover:bg-gray-200 transition-colors shrink-0" title="上一張"><Icons.ChevronLeft className="w-5 h-5"/></button>
                                             
-                                            <button onClick={handleShuffle} disabled={totalCards <= 1} style={{ backgroundColor: buttonColor, color: '#1f2937' }} className="shrink-0 whitespace-nowrap px-4 md:px-5 py-2.5 rounded-full text-sm font-bold disabled:opacity-30 transition-colors flex items-center"><Icons.Shuffle className="w-4 h-4 mr-1 md:mr-1.5" />打亂</button>
-                                            <button onClick={handleRestoreOrder} disabled={totalCards <= 1} style={{ backgroundColor: buttonColor, color: '#1f2937' }} className="shrink-0 whitespace-nowrap px-4 md:px-5 py-2.5 rounded-full text-sm font-bold disabled:opacity-30 transition-colors flex items-center"><Icons.List className="w-4 h-4 mr-1 md:mr-1.5" />恢復順序</button>
-                                            <button onClick={() => setModalState({ isOpen: true, type: 'addCard' })} style={{ backgroundColor: buttonColor, color: '#1f2937' }} className="shrink-0 whitespace-nowrap px-4 md:px-5 py-2.5 rounded-full text-sm font-bold transition-colors flex items-center"><Icons.Plus className="w-4 h-4 mr-1 md:mr-1.5 border-2 border-current rounded-full" />新增</button>
-                                            <button onClick={openNoteModal} style={{ backgroundColor: buttonColor, color: '#1f2937' }} className="shrink-0 whitespace-nowrap px-4 md:px-5 py-2.5 rounded-full text-sm font-bold transition-colors flex items-center" title="查看或編輯備註"><Icons.FileText className="w-4 h-4 mr-1 md:mr-1.5" />備註</button>
+                                            <button onClick={handleShuffle} disabled={totalCards <= 1} style={{ backgroundColor: buttonColor, color: '#1f2937' }} className="shrink-0 whitespace-nowrap px-4 md:px-5 py-2.5 rounded-full text-sm font-bold disabled:opacity-30 transition-all hover:brightness-95 flex items-center"><Icons.Shuffle className="w-4 h-4 mr-1 md:mr-1.5" />打亂</button>
+                                            <button onClick={handleRestoreOrder} disabled={totalCards <= 1} style={{ backgroundColor: buttonColor, color: '#1f2937' }} className="shrink-0 whitespace-nowrap px-4 md:px-5 py-2.5 rounded-full text-sm font-bold disabled:opacity-30 transition-all hover:brightness-95 flex items-center"><Icons.List className="w-4 h-4 mr-1 md:mr-1.5" />恢復順序</button>
+                                            <button onClick={() => setModalState({ isOpen: true, type: 'addCard' })} style={{ backgroundColor: buttonColor, color: '#1f2937' }} className="shrink-0 whitespace-nowrap px-4 md:px-5 py-2.5 rounded-full text-sm font-bold transition-all hover:brightness-95 flex items-center"><Icons.Plus className="w-4 h-4 mr-1 md:mr-1.5 border-2 border-current rounded-full" />新增</button>
+                                            <button onClick={openNoteModal} style={{ backgroundColor: buttonColor, color: '#1f2937' }} className="shrink-0 whitespace-nowrap px-4 md:px-5 py-2.5 rounded-full text-sm font-bold transition-all hover:brightness-95 flex items-center" title="查看或編輯備註"><Icons.FileText className="w-4 h-4 mr-1 md:mr-1.5" />備註</button>
 
                                             <button onClick={handleNext} disabled={totalCards <= 1} className="w-10 h-10 bg-gray-50 text-gray-600 rounded-full flex items-center justify-center disabled:opacity-30 hover:bg-gray-200 transition-colors shrink-0" title="單純下一張"><Icons.ChevronRight className="w-5 h-5"/></button>
                                         </div>
@@ -875,7 +875,7 @@
                                             )}
                                         </div>
 
-                                        <button onClick={closeModal} className="w-full mt-10 bg-blue-600 text-white py-4 rounded-2xl font-bold hover:bg-blue-700 transition-colors shadow-lg">完成設定</button>
+                                        <button onClick={closeModal} className="w-full mt-10 py-4 rounded-2xl font-bold transition-all hover:brightness-95 shadow-lg" style={{ backgroundColor: buttonColor, color: '#1f2937' }}>完成設定</button>
                                     </div>
                                 )}
 
@@ -990,7 +990,7 @@
                                         <textarea autoFocus rows="6" className="w-full border-2 border-gray-100 bg-gray-50 p-4 rounded-2xl mb-6 text-base focus:border-indigo-500 focus:bg-white outline-none resize-none transition-colors" placeholder="在這裡隨時補充或查看備註 (例如：詞性、例句、聯想)..." value={formData.note} onChange={e => setFormData({...formData, note: e.target.value})}></textarea>
                                         <div className="flex gap-4">
                                             <button onClick={closeModal} className="flex-1 bg-gray-100 text-gray-600 font-bold py-4 rounded-2xl hover:bg-gray-200 transition-colors">取消</button>
-                                            <button onClick={handleSaveNote} className="flex-1 bg-indigo-600 text-white font-bold py-4 rounded-2xl hover:bg-indigo-700 transition-colors shadow-lg">儲存備註</button>
+                                            <button onClick={handleSaveNote} className="flex-1 font-bold py-4 rounded-2xl transition-all hover:brightness-95 shadow-lg" style={{ backgroundColor: buttonColor, color: '#1f2937' }}>儲存備註</button>
                                         </div>
                                     </div>
                                 )}
@@ -1008,7 +1008,7 @@
                                                 <input type="text" value={formData.deckColor} onChange={e => setFormData({...formData, deckColor: e.target.value})} className="w-20 text-sm font-mono uppercase bg-white border border-gray-300 rounded px-2 py-1 text-gray-700 outline-none focus:border-blue-500" placeholder="#HEX" maxLength="7" title="輸入16進位色號" />
                                             </div>
                                         </div>
-                                        <button onClick={handleAddDeck} className="w-full bg-blue-600 text-white py-4 rounded-2xl font-bold hover:bg-blue-700 transition-colors shadow-lg">確認建立</button>
+                                        <button onClick={handleAddDeck} className="w-full py-4 rounded-2xl font-bold transition-all hover:brightness-95 shadow-lg" style={{ backgroundColor: buttonColor, color: '#1f2937' }}>確認建立</button>
                                     </div>
                                 )}
 
@@ -1053,7 +1053,7 @@
                                         )}
                                         
                                         <textarea rows="6" className="w-full border-2 border-gray-100 bg-gray-50 p-4 rounded-2xl mb-6 text-sm focus:border-blue-500 focus:bg-white outline-none resize-none transition-colors" placeholder={"格式一(雙面)：\n【正面】：Apple\n【背面】：蘋果\n\n格式二(三面)：\n【正面】：猫\n【中間】：ねこ\n【背面】：貓咪"} value={formData.importText} onChange={e => setFormData({...formData, importText: e.target.value})}></textarea>
-                                        <button onClick={handleTextImport} className="w-full bg-gray-800 text-white py-4 rounded-2xl font-bold hover:bg-black transition-colors shadow-lg">解析並同步至雲端</button>
+                                        <button onClick={handleTextImport} className="w-full py-4 rounded-2xl font-bold transition-all hover:brightness-95 shadow-lg" style={{ backgroundColor: buttonColor, color: '#1f2937' }}>解析並同步至雲端</button>
                                     </div>
                                 )}
 
@@ -1092,7 +1092,7 @@
                                             )}
                                         </div>
                                         
-                                        <button onClick={modalState.type === 'editCard' ? handleEditCardSave : handleAddCard} className="w-full bg-blue-600 text-white py-4 rounded-2xl font-bold hover:bg-blue-700 transition-colors shadow-lg">儲存並同步</button>
+                                        <button onClick={modalState.type === 'editCard' ? handleEditCardSave : handleAddCard} className="w-full py-4 rounded-2xl font-bold transition-all hover:brightness-95 shadow-lg" style={{ backgroundColor: buttonColor, color: '#1f2937' }}>儲存並同步</button>
                                     </div>
                                 )}
 
