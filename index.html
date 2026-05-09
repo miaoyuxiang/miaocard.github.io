@@ -236,9 +236,10 @@
                 }, 300);
             }, [totalCards, swipeOut]);
 
-            // 滑鼠與觸控事件統一處理
+            // 滑鼠與觸控事件統一處理 (支援鎖定與取消機制)
             const onPointerDown = (e) => {
                 if (e.pointerType === 'mouse' && e.button !== 0) return; 
+                e.currentTarget.setPointerCapture(e.pointerId); // 鎖定游標焦點
                 touchStartX.current = e.clientX;
                 isSwiping.current = false;
                 setIsDragging(true);
@@ -256,17 +257,21 @@
             const onPointerUp = (e) => {
                 if (!isDragging) return;
                 setIsDragging(false);
+                if (e.currentTarget.hasPointerCapture(e.pointerId)) {
+                    e.currentTarget.releasePointerCapture(e.pointerId);
+                }
+                
                 if (swipeOffset > 80) {
                     triggerPrev(); 
                 } else if (swipeOffset < -80) {
                     triggerNext(); 
                 } else {
-                    setSwipeOffset(0); 
+                    setSwipeOffset(0); // 未達門檻，回彈
                 }
                 touchStartX.current = null;
             };
 
-            // 安全的翻面控制（拖曳時、飛出時、短時間連點皆不觸發）
+            // 安全的翻面控制
             const safeHandleFlip = (e) => {
                 if (isSwiping.current) {
                     isSwiping.current = false;
@@ -360,7 +365,7 @@
                 navigator.clipboard.writeText(promptText).then(() => {
                     alert("✅ 已複製 AI 提示詞！\n\n💡 提醒：貼上給 AI 前，請記得自行修改括號內的內容，或是加上你指定的範圍與主題喔！");
                 }).catch(() => {
-                    alert("複製失敗，請手手動複製。");
+                    alert("複製失敗，請手動複製。");
                 });
             };
 
@@ -686,11 +691,11 @@
                 );
             };
 
-            // 滑動效果與距離計算 (修改為水平移動並加上阻力與淡出)
+            // 阻力與淡出計算
             const maxDrag = 150; 
             let visualSwipe = swipeOffset;
             if (Math.abs(swipeOffset) > maxDrag) {
-                // 超過最大距離後增加阻力 (不會無止盡滑動)
+                // 產生阻力感
                 visualSwipe = Math.sign(swipeOffset) * (maxDrag + (Math.abs(swipeOffset) - maxDrag) * 0.15);
             }
             
@@ -705,7 +710,6 @@
                 currentOpacity = 0;
             } else {
                 swipeTransform = `translate3d(${visualSwipe}px, 0, 0)`; 
-                // 滑動時計算淡出效果 (越接近邊緣越透明)
                 if (isDragging) {
                     currentOpacity = Math.max(0.2, 1 - (Math.abs(swipeOffset) / 250));
                 }
@@ -720,7 +724,6 @@
                         .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
                         @keyframes fadeIn { from { opacity: 0; transform: translateY(-5px); } to { opacity: 1; transform: translateY(0); } }
                         
-                        /* 嚴謹的 3D 卡片設定，防破圖與重疊 */
                         .card-perspective { perspective: 1200px; touch-action: pan-y; }
                         .card-flipper { transform-style: preserve-3d; }
                         .card-face {
@@ -731,7 +734,13 @@
                         }
                         .face-front { transform: rotateY(0deg) translateZ(1px); }
                         .face-back { transform: rotateY(180deg) translateZ(1px); }
-                        .no-select { user-select: none; -webkit-user-select: none; }
+                        
+                        /* 鎖定拖曳防選取，加入 touch-action: pan-y 防止垂直滑動中斷 */
+                        .no-select { 
+                            user-select: none; 
+                            -webkit-user-select: none; 
+                            touch-action: pan-y;
+                        }
                     `}</style>
 
                     <div className="w-full max-w-4xl flex flex-col md:flex-row justify-between items-center mb-8 gap-4">
@@ -867,16 +876,16 @@
                                             </div>
                                         ) : (
                                             <div 
-                                                className="relative w-full h-full cursor-pointer no-select"
+                                                className={`relative w-full h-full cursor-pointer no-select ${swipeOut ? 'transition-all duration-300' : (isDragging ? '' : 'transition-all duration-300')}`}
                                                 style={{ 
                                                     transform: swipeTransform, 
-                                                    opacity: currentOpacity,
-                                                    transition: (resetMode || isDragging) ? 'none' : 'all 0.3s ease-out'
+                                                    opacity: currentOpacity
                                                 }}
                                                 onPointerDown={onPointerDown}
                                                 onPointerMove={onPointerMove}
                                                 onPointerUp={onPointerUp}
                                                 onPointerLeave={onPointerUp}
+                                                onPointerCancel={onPointerUp}
                                                 onDragStart={(e) => e.preventDefault()}
                                                 onClick={safeHandleFlip}
                                             >
@@ -1004,9 +1013,6 @@
                                     {/* 最底部：Quick Tools - 極簡無字圖示版 */}
                                     {totalCards > 0 && (
                                         <div className="flex flex-nowrap overflow-x-auto custom-scrollbar items-center justify-center gap-4 md:gap-6 w-full bg-white p-3 rounded-2xl shadow-sm border border-gray-100">
-                                            <button onClick={handleFirstCard} disabled={totalCards <= 1 || currentCardIndex === 0} className="w-12 h-12 rounded-full flex items-center justify-center disabled:opacity-30 transition-all hover:brightness-95 shadow-sm shrink-0" style={{ backgroundColor: buttonColor, color: '#1f2937' }} title="回到第一張">
-                                                <Icons.SkipBack className="w-5 h-5"/>
-                                            </button>
                                             <button onClick={handleShuffle} disabled={totalCards <= 1} className="w-12 h-12 rounded-full flex items-center justify-center disabled:opacity-30 transition-all hover:brightness-95 shadow-sm shrink-0" style={{ backgroundColor: buttonColor, color: '#1f2937' }} title="隨機打亂">
                                                 <Icons.Shuffle className="w-5 h-5"/>
                                             </button>
