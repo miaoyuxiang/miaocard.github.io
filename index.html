@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>苗寶雲端字卡系統 (全功能版)</title>
+    <title>苗寶雲端字卡系統 (日文三面版)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
@@ -18,7 +18,7 @@
         import { getFirestore, doc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
         import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 
-        // 2. Firebase 配置
+        // 2. Firebase 配置 [cite: 3]
         const firebaseConfig = {
             apiKey: "AIzaSyBMqOn8ihqPxWP7L1rKMMH07t8Y8QSX_Zs",
             authDomain: "miaocard.firebaseapp.com",
@@ -53,19 +53,23 @@
         };
 
         const App = () => {
-            // 狀態管理
+            // 狀態管理 [cite: 13]
             const [user, setUser] = React.useState(null);
             const [decks, setDecks] = React.useState([]);
             const [activeCategoryIndex, setActiveCategoryIndex] = React.useState(0);
             const [currentCardIndex, setCurrentCardIndex] = React.useState(0);
-            const [isFlipped, setIsFlipped] = React.useState(false);
             const [showStarredOnly, setShowStarredOnly] = React.useState(false); 
-            const [modalState, setModalState] = React.useState({ isOpen: false, type: null }); 
-            const [formData, setFormData] = React.useState({ deckName: '', cardFront: '', cardBack: '', importText: '', importMode: 'append', newDeckName: '' });
+            const [modalState, setModalState] = React.useState({ isOpen: false, type: null });
+            
+            // 將原本的 isFlipped 替換為 flipAngle，用來支援無限次數的翻轉
+            const [flipAngle, setFlipAngle] = React.useState(0);
+            
+            // 新增 cardType 與 cardMiddle 來支援三面字卡 [cite: 16]
+            const [formData, setFormData] = React.useState({ deckName: '', cardFront: '', cardMiddle: '', cardBack: '', importText: '', importMode: 'append', newDeckName: '', cardType: '2sided' });
             
             const fileInputRef = React.useRef(null);
             
-            // 監聽登入狀態
+            // 監聽登入狀態 [cite: 17]
             React.useEffect(() => {
                 const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
                     setUser(currentUser);
@@ -74,7 +78,7 @@
                 return () => unsubscribe();
             }, []);
 
-            // 監聽雲端資料庫
+            // 監聽雲端資料庫 [cite: 19]
             React.useEffect(() => {
                 if (!user) return;
                 const unsub = onSnapshot(doc(db, "users", user.uid), (docSnap) => {
@@ -85,7 +89,7 @@
                 return () => unsub();
             }, [user]);
 
-            // 同步至雲端的通用函式
+            // 同步至雲端的通用函式 [cite: 21]
             const syncToCloud = async (newDecks) => {
                 if (!user) return;
                 await setDoc(doc(db, "users", user.uid), { decks: newDecks });
@@ -96,27 +100,23 @@
                 syncToCloud(newDecks);
             };
 
-            // 身分驗證函式
             const handleLogin = () => signInWithPopup(auth, provider);
             const handleLogout = () => signOut(auth);
 
-            // 資料計算
+            // 資料計算 [cite: 25]
             const currentCategory = decks[activeCategoryIndex] || null;
             const allCards = currentCategory?.cards || [];
             
-            // 將原始索引記錄下來，以便過濾星號卡片後還能找到正確的卡片進行刪除或修改
             const currentCardsWithIdx = allCards.map((c, idx) => ({ ...c, originalIndex: idx }));
             const currentCards = showStarredOnly ? currentCardsWithIdx.filter(c => c.isStarred) : currentCardsWithIdx;
             
             const currentCard = currentCards[currentCardIndex] || null;
             const totalCards = currentCards.length;
 
-            // 快捷鍵控制
+            // 快捷鍵控制 [cite: 27]
             React.useEffect(() => {
                 const handleKeyDown = (e) => {
-                    if (modalState.isOpen || !user) return; // 開啟彈窗或未登入時禁用快捷鍵
-                    
-                    // 防止在 input/textarea 裡按空白鍵或 Enter 觸發翻頁
+                    if (modalState.isOpen || !user) return;
                     if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
 
                     if (e.key === 'ArrowRight') handleNext();
@@ -128,11 +128,10 @@
                 };
                 window.addEventListener('keydown', handleKeyDown);
                 return () => window.removeEventListener('keydown', handleKeyDown);
-            }, [currentCardIndex, isFlipped, totalCards, modalState.isOpen, activeCategoryIndex, decks, showStarredOnly, user]);
+            }, [currentCardIndex, flipAngle, totalCards, modalState.isOpen, activeCategoryIndex, decks, showStarredOnly, user]);
 
             // ===== 各種操作函式 =====
 
-            // 匯出 JSON
             const handleExport = () => {
                 if (decks.length === 0) return;
                 const dataStr = JSON.stringify(decks, null, 2);
@@ -146,7 +145,6 @@
                 document.body.removeChild(a);
             };
 
-            // 匯入 JSON
             const handleFileChange = (event) => {
                 const file = event.target.files[0];
                 if (!file) return;
@@ -167,19 +165,32 @@
                     }
                 };
                 reader.readAsText(file);
-                // 重置 file input 讓下次選同一個檔案也能觸發 onChange
                 event.target.value = null; 
             };
 
-            // 快速匯入文字
+            // 快速匯入文字 (支援假名格式) [cite: 42]
             const handleTextImport = () => {
                 if (!formData.importText.trim()) return;
                 const cards = [];
                 const blocks = formData.importText.split(/【正面】(?:：|:)?/).filter(b => b.trim() !== '');
+                
                 blocks.forEach(block => {
-                    const parts = block.split(/【背面】(?:：|:)?/);
-                    if (parts.length >= 2) {
-                        cards.push({ front: parts[0].trim(), back: parts.slice(1).join('【背面】：').trim(), isStarred: false });
+                    // 偵測是否包含假名 (三面模式)
+                    if (block.includes('【假名】')) {
+                        const parts1 = block.split(/【假名】(?:：|:)?/);
+                        const front = parts1[0].trim();
+                        const parts2 = parts1[1].split(/【背面】(?:：|:)?/);
+                        if (parts2.length >= 2) {
+                            const middle = parts2[0].trim();
+                            const back = parts2.slice(1).join('【背面】：').trim();
+                            cards.push({ front, middle, back, isStarred: false });
+                        }
+                    } else {
+                        // 雙面模式
+                        const parts = block.split(/【背面】(?:：|:)?/);
+                        if (parts.length >= 2) {
+                            cards.push({ front: parts[0].trim(), back: parts.slice(1).join('【背面】：').trim(), isStarred: false });
+                        }
                     }
                 });
                 
@@ -208,31 +219,31 @@
                 setTimeout(() => alert(`🎉 成功匯入 ${cards.length} 張字卡，並已同步至雲端！`), 100);
             };
 
-            const handleFlip = () => totalCards > 0 && setIsFlipped(!isFlipped);
+            // 翻轉角度增加 180 度 [cite: 50]
+            const handleFlip = () => totalCards > 0 && setFlipAngle(prev => prev + 180);
 
             const handleFirstCard = () => {
                 if (totalCards <= 1 || currentCardIndex === 0) return;
-                setIsFlipped(false);
+                setFlipAngle(0);
                 setCurrentCardIndex(0);
             };
 
             const handleNext = React.useCallback(() => {
                 if (totalCards <= 1) return;
-                setIsFlipped(false);
+                setFlipAngle(0);
                 setTimeout(() => setCurrentCardIndex((prev) => (prev + 1) % totalCards), 150);
             }, [totalCards]);
 
             const handlePrev = React.useCallback(() => {
                 if (totalCards <= 1) return;
-                setIsFlipped(false);
+                setFlipAngle(0);
                 setTimeout(() => setCurrentCardIndex((prev) => (prev - 1 + totalCards) % totalCards), 150);
             }, [totalCards]);
 
             const handleShuffle = () => {
                 if (totalCards <= 1) return;
-                setIsFlipped(false);
+                setFlipAngle(0);
                 const newDecks = [...decks];
-                // 打亂目前的卡組並同步到雲端
                 newDecks[activeCategoryIndex].cards.sort(() => Math.random() - 0.5);
                 updateDecks(newDecks);
                 setCurrentCardIndex(0);
@@ -267,7 +278,14 @@
             const handleAddCard = () => {
                 if (!formData.cardFront.trim() || !formData.cardBack.trim()) return;
                 const newDecks = [...decks];
-                newDecks[activeCategoryIndex].cards.push({ front: formData.cardFront, back: formData.cardBack, isStarred: false });
+                
+                // 根據模式建立不同的卡片 [cite: 63]
+                const newCard = { front: formData.cardFront, back: formData.cardBack, isStarred: false };
+                if (formData.cardType === '3sided' && formData.cardMiddle.trim()) {
+                    newCard.middle = formData.cardMiddle;
+                }
+
+                newDecks[activeCategoryIndex].cards.push(newCard);
                 updateDecks(newDecks);
                 if (showStarredOnly) setShowStarredOnly(false);
                 setCurrentCardIndex(newDecks[activeCategoryIndex].cards.length - 1);
@@ -293,8 +311,52 @@
 
             const closeModal = () => {
                 setModalState({ isOpen: false, type: null });
-                setFormData({ deckName: '', cardFront: '', cardBack: '', importText: '', importMode: 'append', newDeckName: '' });
+                // 保留使用者選擇的 cardType 習慣，只清空內容
+                setFormData(prev => ({ ...prev, deckName: '', cardFront: '', cardMiddle: '', cardBack: '', importText: '', newDeckName: '' }));
             };
+
+            // ====== 動態多面翻轉引擎邏輯 ======
+            
+            // 決定這張卡片有幾面
+            const faces = React.useMemo(() => {
+                if (!currentCard) return [];
+                if (currentCard.middle) {
+                    return [
+                        { label: '漢字', text: currentCard.front, theme: 'front' },
+                        { label: '假名', text: currentCard.middle, theme: 'middle' },
+                        { label: '中文', text: currentCard.back, theme: 'back' }
+                    ];
+                }
+                return [
+                    { label: 'Front', text: currentCard.front, theme: 'front' },
+                    { label: 'Back', text: currentCard.back, theme: 'back' }
+                ];
+            }, [currentCard]);
+
+            const totalFaces = faces.length;
+            const steps = Math.floor(flipAngle / 180);
+            
+            // 計算目前與下一次應該顯示哪一面
+            const currentFaceIdx = totalFaces > 0 ? steps % totalFaces : 0;
+            const nextFaceIdx = totalFaces > 0 ? (steps + 1) % totalFaces : 0;
+
+            // 判斷當前物理 DOM 是看到正面還是背面
+            const isDomFrontVisible = steps % 2 === 0;
+
+            const domFrontFace = isDomFrontVisible ? faces[currentFaceIdx] : faces[nextFaceIdx];
+            const domBackFace = isDomFrontVisible ? faces[nextFaceIdx] : faces[currentFaceIdx];
+
+            // 顏色主題產生器
+            const getFaceClasses = (theme) => {
+                if (theme === 'front') return { bg: 'bg-white', border: 'border-blue-500', text: 'text-gray-800', badgeText: 'text-blue-500', badgeBg: 'bg-blue-50', iconClass: 'text-gray-300 hover:text-yellow-400 hover:bg-gray-50', trashClass: 'text-gray-300 hover:text-red-500 hover:bg-red-50' };
+                if (theme === 'middle') return { bg: 'bg-emerald-50', border: 'border-emerald-500', text: 'text-emerald-900', badgeText: 'text-emerald-600', badgeBg: 'bg-emerald-100', iconClass: 'text-emerald-300 hover:text-yellow-500 hover:bg-emerald-100', trashClass: 'text-emerald-300 hover:text-red-500 hover:bg-emerald-100' };
+                if (theme === 'back') return { bg: 'bg-gray-800', border: 'border-yellow-400', text: 'text-white', badgeText: 'text-yellow-400', badgeBg: 'bg-gray-700', iconClass: 'text-gray-500 hover:text-yellow-400 hover:bg-gray-700', trashClass: 'text-gray-500 hover:text-red-400 hover:bg-gray-700' };
+                return {};
+            };
+
+            const frontTheme = getFaceClasses(domFrontFace?.theme);
+            const backTheme = getFaceClasses(domBackFace?.theme);
+
 
             return (
                 <div className="min-h-screen flex flex-col items-center py-10 px-4">
@@ -310,7 +372,7 @@
                         .perspective-1000 { perspective: 1000px; }
                     `}</style>
 
-                    {/* 頂部標題與登入區 */}
+                    {/* 頂部標題與登入區 [cite: 72] */}
                     <div className="w-full max-w-4xl flex flex-col md:flex-row justify-between items-center mb-8 gap-4">
                         <div className="flex items-center gap-3">
                             <Icons.Cloud className="w-8 h-8 text-blue-500" />
@@ -365,12 +427,12 @@
                                 </div>
                             ) : (
                                 <div className="w-full max-w-2xl mx-auto">
-                                    {/* 卡組選擇分頁 */}
+                                    {/* 卡組選擇分頁 [cite: 90] */}
                                     <div className="flex overflow-x-auto custom-scrollbar bg-white p-2 rounded-2xl mb-6 border border-gray-200 gap-2 items-center shadow-sm">
                                         {decks.map((cat, i) => (
                                             <button 
                                                 key={i} 
-                                                onClick={() => { setActiveCategoryIndex(i); setCurrentCardIndex(0); setIsFlipped(false); setShowStarredOnly(false); }} 
+                                                onClick={() => { setActiveCategoryIndex(i); setCurrentCardIndex(0); setFlipAngle(0); setShowStarredOnly(false); }} 
                                                 className={`flex-shrink-0 px-5 py-2 rounded-xl text-sm font-bold whitespace-nowrap transition-all ${activeCategoryIndex === i ? 'bg-blue-600 text-white shadow-md' : 'text-gray-600 hover:bg-gray-100'}`}
                                             >
                                                 {cat.category}
@@ -409,48 +471,62 @@
                                                 )}
                                             </div>
                                         ) : (
-                                            <div className={`relative w-full h-full transition-transform duration-500 preserve-3d cursor-pointer ${isFlipped ? 'rotate-y-180' : ''}`} onClick={handleFlip}>
-                                                {/* 正面 */}
-                                                <div className="absolute w-full h-full backface-hidden bg-white rounded-3xl shadow-xl flex flex-col items-center justify-center p-8 border-t-[6px] border-blue-500 text-center hover:shadow-2xl transition-shadow overflow-y-auto custom-scrollbar">
-                                                    <div className="absolute top-5 left-6 text-xs font-black text-blue-500 bg-blue-50 px-3 py-1 rounded-full uppercase tracking-wider">Front</div>
+                                            <div className="relative w-full h-full preserve-3d cursor-pointer" style={{ transform: `rotateY(${flipAngle}deg)`, transition: 'transform 0.5s cubic-bezier(0.4, 0, 0.2, 1)' }} onClick={handleFlip}>
+                                                
+                                                {/* DOM Front */}
+                                                <div className={`absolute w-full h-full backface-hidden rounded-3xl shadow-xl flex flex-col items-center justify-center p-8 border-t-[6px] text-center overflow-y-auto custom-scrollbar ${frontTheme.bg} ${frontTheme.border}`}>
+                                                    <div className={`absolute top-5 left-6 text-xs font-black px-3 py-1 rounded-full uppercase tracking-wider ${frontTheme.badgeText} ${frontTheme.badgeBg}`}>
+                                                        {domFrontFace?.label}
+                                                    </div>
                                                     
-                                                    <button onClick={handleToggleStar} className={`absolute top-5 right-14 p-2 rounded-full transition-colors ${currentCard?.isStarred ? 'text-yellow-400 hover:bg-yellow-50' : 'text-gray-300 hover:text-yellow-400 hover:bg-gray-50'}`} title="標記星號 (重點複習)">
+                                                    <button onClick={handleToggleStar} className={`absolute top-5 right-14 p-2 rounded-full transition-colors ${currentCard?.isStarred ? 'text-yellow-400 hover:bg-yellow-100' : frontTheme.iconClass}`} title="標記星號 (重點複習)">
                                                         <Icons.Star className="w-6 h-6" fill={currentCard?.isStarred ? "currentColor" : "none"} />
                                                     </button>
-                                                    <button onClick={(e) => { e.stopPropagation(); setModalState({ isOpen: true, type: 'deleteCard' }); }} className="absolute top-5 right-5 text-gray-300 hover:text-red-500 p-2 hover:bg-red-50 rounded-full transition-colors" title="刪除此卡">
+                                                    <button onClick={(e) => { e.stopPropagation(); setModalState({ isOpen: true, type: 'deleteCard' }); }} className={`absolute top-5 right-5 p-2 rounded-full transition-colors ${frontTheme.trashClass}`} title="刪除此卡">
                                                         <Icons.Trash2 className="w-5 h-5" />
                                                     </button>
 
-                                                    <div className="text-3xl md:text-4xl text-gray-800 font-bold whitespace-pre-wrap leading-relaxed w-full px-4 mt-6">{currentCard?.front}</div>
-                                                    <div className="absolute bottom-5 text-gray-400 text-xs flex items-center font-medium bg-gray-50 px-3 py-1 rounded-full">點擊翻轉 <Icons.RotateCcw className="w-3 h-3 ml-1.5" /></div>
+                                                    <div className={`text-3xl md:text-4xl font-bold whitespace-pre-wrap leading-relaxed w-full px-4 mt-6 ${frontTheme.text}`}>
+                                                        {domFrontFace?.text}
+                                                    </div>
+                                                    <div className={`absolute bottom-5 text-xs flex items-center font-bold px-3 py-1 rounded-full ${frontTheme.badgeText} ${frontTheme.badgeBg}`}>
+                                                        點擊翻轉 <Icons.RotateCcw className="w-3 h-3 ml-1.5" />
+                                                    </div>
                                                 </div>
                                                 
-                                                {/* 背面 */}
-                                                <div className="absolute w-full h-full backface-hidden rotate-y-180 bg-gray-800 rounded-3xl shadow-xl flex flex-col items-center justify-center p-8 border-t-[6px] border-yellow-400 text-center overflow-y-auto custom-scrollbar">
-                                                    <div className="absolute top-5 left-6 text-xs font-black text-yellow-400 bg-gray-700 px-3 py-1 rounded-full uppercase tracking-wider">Back</div>
+                                                {/* DOM Back */}
+                                                <div className={`absolute w-full h-full backface-hidden rotate-y-180 rounded-3xl shadow-xl flex flex-col items-center justify-center p-8 border-t-[6px] text-center overflow-y-auto custom-scrollbar ${backTheme.bg} ${backTheme.border}`}>
+                                                    <div className={`absolute top-5 left-6 text-xs font-black px-3 py-1 rounded-full uppercase tracking-wider ${backTheme.badgeText} ${backTheme.badgeBg}`}>
+                                                        {domBackFace?.label}
+                                                    </div>
                                                     
-                                                    <button onClick={handleToggleStar} className={`absolute top-5 right-14 p-2 rounded-full transition-colors ${currentCard?.isStarred ? 'text-yellow-400 hover:bg-gray-700' : 'text-gray-500 hover:text-yellow-400 hover:bg-gray-700'}`} title="標記星號 (重點複習)">
+                                                    <button onClick={handleToggleStar} className={`absolute top-5 right-14 p-2 rounded-full transition-colors ${currentCard?.isStarred ? 'text-yellow-400 hover:bg-yellow-100' : backTheme.iconClass}`} title="標記星號 (重點複習)">
                                                         <Icons.Star className="w-6 h-6" fill={currentCard?.isStarred ? "currentColor" : "none"} />
                                                     </button>
-                                                    <button onClick={(e) => { e.stopPropagation(); setModalState({ isOpen: true, type: 'deleteCard' }); }} className="absolute top-5 right-5 text-gray-500 hover:text-red-400 p-2 hover:bg-gray-700 rounded-full transition-colors" title="刪除此卡">
+                                                    <button onClick={(e) => { e.stopPropagation(); setModalState({ isOpen: true, type: 'deleteCard' }); }} className={`absolute top-5 right-5 p-2 rounded-full transition-colors ${backTheme.trashClass}`} title="刪除此卡">
                                                         <Icons.Trash2 className="w-5 h-5" />
                                                     </button>
 
-                                                    <div className="text-2xl md:text-3xl text-white font-medium whitespace-pre-wrap leading-relaxed w-full px-4 mt-6">{currentCard?.back}</div>
-                                                    <div className="absolute bottom-5 text-gray-500 text-xs flex items-center font-medium bg-gray-700 px-3 py-1 rounded-full">點擊翻轉 <Icons.RotateCcw className="w-3 h-3 ml-1.5" /></div>
+                                                    <div className={`text-3xl md:text-4xl font-bold whitespace-pre-wrap leading-relaxed w-full px-4 mt-6 ${backTheme.text}`}>
+                                                        {domBackFace?.text}
+                                                    </div>
+                                                    <div className={`absolute bottom-5 text-xs flex items-center font-bold px-3 py-1 rounded-full ${backTheme.badgeText} ${backTheme.badgeBg}`}>
+                                                        點擊翻轉 <Icons.RotateCcw className="w-3 h-3 ml-1.5" />
+                                                    </div>
                                                 </div>
+
                                             </div>
                                         )}
                                     </div>
 
-                                    {/* 控制列與進度列 */}
+                                    {/* 控制列與進度列 [cite: 133] */}
                                     <div className="flex flex-col md:flex-row items-center justify-between gap-6 bg-white p-4 rounded-3xl shadow-sm border border-gray-100">
                                         <div className="flex items-center gap-3 w-full md:w-auto">
                                             <div className="text-gray-500 text-sm font-bold bg-gray-100 px-4 py-3 rounded-2xl whitespace-nowrap">
                                                 {totalCards > 0 ? currentCardIndex + 1 : 0} / {totalCards}
                                             </div>
                                             {allCards.length > 0 && (
-                                                <button onClick={() => {setShowStarredOnly(!showStarredOnly); setCurrentCardIndex(0); setIsFlipped(false);}} className={`text-sm font-bold px-4 py-3 rounded-2xl transition-colors flex items-center justify-center flex-1 md:flex-none ${showStarredOnly ? 'bg-yellow-100 text-yellow-700' : 'bg-gray-50 text-gray-600 hover:bg-gray-100'}`}>
+                                                <button onClick={() => {setShowStarredOnly(!showStarredOnly); setCurrentCardIndex(0); setFlipAngle(0);}} className={`text-sm font-bold px-4 py-3 rounded-2xl transition-colors flex items-center justify-center flex-1 md:flex-none ${showStarredOnly ? 'bg-yellow-100 text-yellow-700' : 'bg-gray-50 text-gray-600 hover:bg-gray-100'}`}>
                                                     <Icons.Star className="w-4 h-4 mr-1.5" fill={showStarredOnly ? "currentColor" : "none"} /> 
                                                     {showStarredOnly ? '查看全部' : '只看星號'}
                                                 </button>
@@ -474,7 +550,7 @@
                         </div>
                     )}
 
-                    {/* 所有彈出視窗模組 */}
+                    {/* 所有彈出視窗模組 [cite: 148] */}
                     {modalState.isOpen && (
                         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex justify-center items-center z-50 p-4 animate-[fadeIn_0.2s]">
                             <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md p-8 relative">
@@ -509,16 +585,40 @@
                                             <input autoFocus type="text" className="w-full border-2 border-gray-100 bg-gray-50 p-4 rounded-2xl mb-4 focus:border-blue-500 focus:bg-white outline-none text-sm transition-colors" placeholder="輸入新卡組名稱 (未輸入預設為：新匯入卡組)" value={formData.newDeckName} onChange={e => setFormData({...formData, newDeckName: e.target.value})} />
                                         )}
                                         
-                                        <textarea rows="6" className="w-full border-2 border-gray-100 bg-gray-50 p-4 rounded-2xl mb-6 text-sm focus:border-blue-500 focus:bg-white outline-none resize-none transition-colors" placeholder="請貼上文字，格式範例：&#10;【正面】：Apple&#10;【背面】：蘋果&#10;&#10;【正面】：Banana&#10;【背面】：香蕉" value={formData.importText} onChange={e => setFormData({...formData, importText: e.target.value})}></textarea>
+                                        <textarea rows="6" className="w-full border-2 border-gray-100 bg-gray-50 p-4 rounded-2xl mb-6 text-sm focus:border-blue-500 focus:bg-white outline-none resize-none transition-colors" placeholder="格式一(雙面)：&#10;【正面】：Apple&#10;【背面】：蘋果&#10;&#10;格式二(日文三面)：&#10;【正面】：猫&#10;【假名】：ねこ&#10;【背面】：貓咪" value={formData.importText} onChange={e => setFormData({...formData, importText: e.target.value})}></textarea>
                                         <button onClick={handleTextImport} className="w-full bg-gray-800 text-white py-4 rounded-2xl font-bold hover:bg-black transition-colors shadow-lg">解析並同步至雲端</button>
                                     </div>
                                 )}
 
                                 {modalState.type === 'addCard' && (
                                     <div>
-                                        <h3 className="text-xl font-bold mb-6 text-gray-800">新增字卡</h3>
-                                        <textarea autoFocus rows="2" className="w-full border-2 border-gray-100 bg-gray-50 p-4 rounded-2xl mb-4 focus:border-blue-500 focus:bg-white outline-none resize-none transition-colors" placeholder="正面內容 (單字/題目)" value={formData.cardFront} onChange={e => setFormData({...formData, cardFront: e.target.value})}></textarea>
-                                        <textarea rows="3" className="w-full border-2 border-gray-100 bg-gray-50 p-4 rounded-2xl mb-6 focus:border-yellow-400 focus:bg-white outline-none resize-none transition-colors" placeholder="背面內容 (翻譯/解答)" value={formData.cardBack} onChange={e => setFormData({...formData, cardBack: e.target.value})}></textarea>
+                                        <h3 className="text-xl font-bold mb-4 text-gray-800">新增字卡</h3>
+                                        
+                                        {/* 字卡模式切換 */}
+                                        <div className="flex gap-4 mb-5 bg-gray-50 p-3 rounded-2xl">
+                                            <label className="flex items-center gap-2 cursor-pointer">
+                                                <input type="radio" checked={formData.cardType === '2sided'} onChange={() => setFormData({...formData, cardType: '2sided'})} className="text-blue-600 focus:ring-blue-500 w-4 h-4" />
+                                                <span className="text-sm font-bold text-gray-700">雙面字卡</span>
+                                            </label>
+                                            <label className="flex items-center gap-2 cursor-pointer">
+                                                <input type="radio" checked={formData.cardType === '3sided'} onChange={() => setFormData({...formData, cardType: '3sided'})} className="text-blue-600 focus:ring-blue-500 w-4 h-4" />
+                                                <span className="text-sm font-bold text-gray-700">三面字卡 (日文模式)</span>
+                                            </label>
+                                        </div>
+
+                                        {formData.cardType === '3sided' ? (
+                                            <React.Fragment>
+                                                <textarea autoFocus rows="2" className="w-full border-2 border-gray-100 bg-gray-50 p-3 rounded-xl mb-3 focus:border-blue-500 focus:bg-white outline-none resize-none transition-colors" placeholder="漢字 (如：猫)" value={formData.cardFront} onChange={e => setFormData({...formData, cardFront: e.target.value})}></textarea>
+                                                <textarea rows="2" className="w-full border-2 border-gray-100 bg-emerald-50 p-3 rounded-xl mb-3 focus:border-emerald-500 focus:bg-white outline-none resize-none transition-colors" placeholder="假名 (如：ねこ)" value={formData.cardMiddle} onChange={e => setFormData({...formData, cardMiddle: e.target.value})}></textarea>
+                                                <textarea rows="2" className="w-full border-2 border-gray-100 bg-gray-50 p-3 rounded-xl mb-5 focus:border-yellow-400 focus:bg-white outline-none resize-none transition-colors" placeholder="中文 (如：貓咪)" value={formData.cardBack} onChange={e => setFormData({...formData, cardBack: e.target.value})}></textarea>
+                                            </React.Fragment>
+                                        ) : (
+                                            <React.Fragment>
+                                                <textarea autoFocus rows="2" className="w-full border-2 border-gray-100 bg-gray-50 p-4 rounded-2xl mb-4 focus:border-blue-500 focus:bg-white outline-none resize-none transition-colors" placeholder="正面內容 (單字/題目)" value={formData.cardFront} onChange={e => setFormData({...formData, cardFront: e.target.value})}></textarea>
+                                                <textarea rows="3" className="w-full border-2 border-gray-100 bg-gray-50 p-4 rounded-2xl mb-6 focus:border-yellow-400 focus:bg-white outline-none resize-none transition-colors" placeholder="背面內容 (翻譯/解答)" value={formData.cardBack} onChange={e => setFormData({...formData, cardBack: e.target.value})}></textarea>
+                                            </React.Fragment>
+                                        )}
+                                        
                                         <button onClick={handleAddCard} className="w-full bg-blue-600 text-white py-4 rounded-2xl font-bold hover:bg-blue-700 transition-colors shadow-lg">儲存並同步</button>
                                     </div>
                                 )}
